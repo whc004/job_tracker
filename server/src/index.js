@@ -457,6 +457,7 @@ const connectDB = async () => {
     console.log('Connection URI (masked):', process.env.MONGODB_URI?.replace(/:[^:@]+@/, ':****@'));
     
     if (!process.env.MONGODB_URI) {
+      console.log('RAILWAY ENV VAR TEST:', process.env.MONGODB_URI ? 'MONGODB_URI loaded ✅' : '❌ MONGODB_URI missing');
       throw new Error('MONGODB_URI is not defined in environment variables');
     }
     
