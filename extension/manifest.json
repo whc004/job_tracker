@@ -1,0 +1,39 @@
+{
+  "manifest_version": 3,
+  "name": "Job Application Tracker",
+  "version": "1.0",
+  "description": "Save job applications from LinkedIn to your tracker with enhanced data extraction",
+  "permissions": [
+    "storage",
+    "activeTab",
+    "scripting"
+  ],
+  "host_permissions": [
+    "*://*.linkedin.com/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "*://*.linkedin.com/jobs/*",
+        "*://*.linkedin.com/jobs/search*",
+        "*://*.linkedin.com/jobs/search-results*"
+      ],
+      "js": [
+        "userIdManager.js",
+        "content.js"
+      ],
+      "css": [
+        "styles.css"
+      ]
+    }
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Job Tracker"
+  },
+  "icons": {
+    "16": "icons/job-tracker-icon.png",
+    "48": "icons/job-tracker-icon.png",
+    "128": "icons/job-tracker-icon.png"
+  }
+}
