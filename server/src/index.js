@@ -13,6 +13,10 @@ console.log('🚀 Starting Job Tracker API...');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+const PUBLIC_URL =
+  process.env.RAILWAY_STATIC_URL ||
+  process.env.RAILWAY_PUBLIC_DOMAIN ||
+  `http://localhost:${PORT}`;
 
 // Middleware
 app.use(cors());
@@ -474,13 +478,11 @@ const startServer = async () => {
   await connectDB();
   
   app.listen(PORT, () => {
-    console.log('');
     console.log('🚀========================================🚀');
     console.log(`✅ Job Tracker API is running on port ${PORT}`);
-    console.log(`🌐 Test it: http://localhost:${PORT}`);
-    console.log(`🏥 Health check: http://localhost:${PORT}/api/health`);
+    console.log(`🌐 Base URL: ${PUBLIC_URL}`);
+    console.log(`🏥 Health check: ${PUBLIC_URL.replace(/\/$/, '')}/api/health`);
     console.log('🚀========================================🚀');
-    console.log('');
   });
 };
 
