@@ -2,7 +2,7 @@
 console.log('Job Tracker content script loading...');
 
 // global variable for common keyword
-const FRONTEND_URL = 'https://google.com';
+const API_URL = 'https://jobtracker-production-2ed3.up.railway.app/api/applications';
 const TECHNICAL_TERMS = [
   // Programming Languages
   'JavaScript', 'TypeScript', 'Python', 'Java', 'C\\+\\+', 'C#', 'Go', 'Rust', 'Ruby', 'PHP', 
@@ -139,7 +139,7 @@ class LinkedInJobExtractor {
     
     const data = {
       // Core job information
-      title: this.extractJobTitle(),
+      position: this.extractJobposition(),
       company: this.extractCompanyName(),
       location: this.extractLocation(),
       jobType: this.extractJobType(),
@@ -156,7 +156,7 @@ class LinkedInJobExtractor {
       extractedAt: currentTimestamp,
         
       // Application tracking fields
-      applicationStatus: 'applied',
+      applicationStatus: 'Applied',
       applicationDate: new Date().toISOString().split('T')[0],
       notes: '',
       // optional
@@ -209,13 +209,13 @@ extractJobURL(currentUrl) {
   return null;
 }
 
-extractJobTitle() {
+extractJobposition() {
   const link = document.querySelector('a[href*="/jobs/view/"]');
   if (link && link.textContent.trim()) {
-    const title = link.textContent.trim();
-    return title;
+    const position = link.textContent.trim();
+    return position;
   }
-  // if the title is not with the link
+  // if the position is not with the link
   const selectors = [
     'h1.job-details-jobs-unified-top-card__job-title',
     'h1.jobs-unified-top-card__job-title',
@@ -231,10 +231,10 @@ extractJobTitle() {
     const element = document.querySelector(selector);
     
     if (element && element.textContent.trim()) {
-      const title = element.textContent.trim();
-      console.log('✓ SUCCESS - Title found:', title);
+      const position = element.textContent.trim();
+      console.log('✓ SUCCESS - position found:', position);
       console.log('Selector used:', selector);
-      return title;
+      return position;
     } 
     else {
       console.log('✗ Failed - No element or empty text');
@@ -242,7 +242,7 @@ extractJobTitle() {
   }
   
   console.log('All selectors failed - returning fallback');
-  return 'Job Title Not Found';
+  return 'Job position Not Found';
 }
 
 extractCompanyName() {
@@ -409,13 +409,13 @@ extractCompanyName() {
       if (text.includes('director') || text.includes('principal')) return 'Executive Level';
     }
     
-    // Fallback: check job title for experience indicators
-    const title = this.extractJobTitle().toLowerCase();
-    if (title.includes('senior') || title.includes('sr.') || title.includes('staff')) return 'Senior Level';
-    if (title.includes('junior') || title.includes('jr.')) return 'Entry Level';
-    if (title.includes('lead') || title.includes('principal')) return 'Senior Level';
-    if (title.includes('director')) return 'Executive Level';
-    if (title.includes('intern')) return 'Entry Level';
+    // Fallback: check job position for experience indicators
+    const position = this.extractJobposition().toLowerCase();
+    if (position.includes('senior') || position.includes('sr.') || position.includes('staff')) return 'Senior Level';
+    if (position.includes('junior') || position.includes('jr.')) return 'Entry Level';
+    if (position.includes('lead') || position.includes('principal')) return 'Senior Level';
+    if (position.includes('director')) return 'Executive Level';
+    if (position.includes('intern')) return 'Entry Level';
     
     return 'Not specified';
   }
@@ -439,10 +439,10 @@ extractCompanyName() {
       }
     }
     
-    // Extract meaningful words from title (exclude common words and company names)
-    const title = this.extractJobTitle();
-    if (title !== 'Job Title Not Found') {
-      title.split(/[\s,\-\(\)]+/).forEach(word => {
+    // Extract meaningful words from position (exclude common words and company names)
+    const position = this.extractJobposition();
+    if (position !== 'Job position Not Found') {
+      position.split(/[\s,\-\(\)]+/).forEach(word => {
         // Remove punctuation like !, ., ?
         const cleaned = word.replace(/[!.?]/g, '').trim();
         // Only add if length > 2 and not a common word
@@ -472,40 +472,62 @@ extractCompanyName() {
       this.showNotification('⚠️ Please set your User ID in the extension popup first!');
       return;
     }
-    
     const data = this.extractJobData();
-    
-    // Save to local storage
-    await this.saveToLocal(data);
+    await this.saveToServer(data);
   }
 
-  async saveToLocal(data) {
-    return new Promise((resolve) => {
-      chrome.storage.local.get(['savedJobs'], (result) => {
-        const savedJobs = result.savedJobs || [];
-        
-        // Check for duplicates
-        const exists = savedJobs.some(job => job.url === data.url);
-        
-        if (!exists) {
-          savedJobs.push(data);
-          chrome.storage.local.set({ savedJobs }, () => {
-            console.log('Job saved locally:', data);
-            this.showNotification('✅ Job saved to tracker! Click to view', FRONTEND_URL);
-            
-            // Notify popup to refresh
-            chrome.runtime.sendMessage({ action: 'jobSaved' }).catch(() => {
-              // Ignore errors if popup is closed
-            });
-            
-            resolve(true);
-          });
-        } else {
-          this.showNotification('ℹ️ Job already saved');
-          resolve(false);
-        }
+  async saveToServer(data) {
+    try {
+      console.log('Sending job to server:', data);
+      
+      const response = await fetch(API_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          // USER ID AT TOP LEVEL
+          userId: data.userId,
+          
+          // Core fields
+          company: data.company,
+          position: data.position,
+          location: data.location,
+          salary: data.salary,
+          jobUrl: data.url,
+          status: data.applicationStatus || 'Applied',
+          dateApplied: data.applicationDate,
+          notes: data.notes || '',
+          priority: data.priority?.charAt(0).toUpperCase() + data.priority?.slice(1) || 'Medium',
+          technicalDetails: data.keywords || [],
+          
+          // Additional fields (now in API schema)
+          jobType: data.jobType,
+          experienceLevel: data.experienceLevel,
+          workArrangement: data.workArrangement,
+          
+          // Optional fields
+          contactPerson: '',
+          followUpDate: null
+        })
       });
-    });
+
+      const result = await response.json();
+      
+      if (result.success) {
+        console.log('✅ Job saved to server!', result);
+        this.showNotification('✅ Job saved to tracker!');
+        return true;
+      } else {
+        console.error('❌ Server error:', result);
+        this.showNotification('❌ Failed to save: ' + (result.message || 'Unknown error'));
+        return false;
+      }
+    } catch (error) {
+      console.error('❌ Network error:', error);
+      this.showNotification('❌ Connection failed. Check your internet.');
+      return false;
+    }
   }
 
   showNotification(message, linkUrl = null, linkText = null) {

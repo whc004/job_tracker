@@ -1,4 +1,11 @@
-// Popup with User ID Setup Screen
+// ========================================
+// POPUP.JS - HYBRID APPROACH
+// Job Tracker Extension
+// ========================================
+
+// ========================================
+// INITIALIZATION
+// ========================================
 document.addEventListener('DOMContentLoaded', function() {
     console.log('Popup loading...');
     
@@ -14,6 +21,9 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 
+// ========================================
+// SETUP SCREEN
+// ========================================
 function showSetupScreen() {
     document.body.innerHTML = `
         <div style="width: 400px; padding: 20px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;">
@@ -32,7 +42,7 @@ function showSetupScreen() {
             
             <div style="margin-bottom: 15px;">
                 <label style="display: block; margin-bottom: 5px; font-weight: 500;">Enter Your User ID:</label>
-                <input type="text" id="userIdInput" placeholder="user_123456_abcdef" 
+                <input type="text" id="userIdInput" placeholder="job-tracker_yourname" 
                        style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
             </div>
             
@@ -76,7 +86,7 @@ function handleUserIdSubmission() {
         return;
     }
     
-    // Simple format validation (customize as needed)
+    // Simple format validation
     if (!/^[a-zA-Z0-9_-]+$/.test(inputValue)) {
         showError('User ID can only contain letters, numbers, underscores, and dashes');
         return;
@@ -107,10 +117,13 @@ function handleUserIdSubmission() {
     }
 }
 
-function showMainInterface(userId) {
-    // Load the main popup interface
+// ========================================
+// MAIN INTERFACE - HYBRID APPROACH
+// ========================================
+async function showMainInterface(userId) {
+    // First, show loading state
     document.body.innerHTML = `
-        <div style="width: 420px; padding: 16px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; margin: 0; background: #f8f9fa;">
+        <div style="width: 420px; padding: 16px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; background: #f8f9fa;">
             <div style="text-align: center; margin-bottom: 16px; background: white; padding: 16px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
                 <h2 style="margin: 0; color: #0073b1; font-size: 18px;">Job Tracker</h2>
             </div>
@@ -120,159 +133,280 @@ function showMainInterface(userId) {
                 <button id="changeUserIdBtn" style="float: right; background: none; border: none; color: #1976d2; cursor: pointer; font-size: 10px; text-decoration: underline;">Change</button>
             </div>
 
-            <div style="background: white; padding: 12px; border-radius: 6px; margin-bottom: 16px; text-align: center; font-size: 14px; color: #333; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-                <span id="jobCount">0</span> jobs saved
+            <div style="background: white; padding: 16px; border-radius: 6px; margin-bottom: 16px; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                <div style="font-size: 32px; font-weight: bold; color: #0073b1;" id="jobCount">...</div>
+                <div style="color: #666; font-size: 14px;">Jobs Saved</div>
             </div>
 
-            <div style="display: flex; gap: 8px; margin-bottom: 16px;">
-                <button id="refreshData" style="flex: 1; padding: 10px; border: none; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 500; background: white; color: #666; border: 1px solid #ddd;">Refresh</button>
-                <button id="viewConsole" style="flex: 1; padding: 10px; border: none; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 500; background: white; color: #666; border: 1px solid #ddd;">View Data</button>
-                <button id="clearAll" style="flex: 1; padding: 10px; border: none; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 500; background: #dc3545; color: white;">Clear All</button>
-            </div>
+            <button id="openDashboard" style="width: 100%; padding: 12px; background: #0073b1; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 500; margin-bottom: 16px;">
+                📊 Open Dashboard
+            </button>
 
-            <div style="background: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); max-height: 300px; overflow-y: auto;">
-                <div style="padding: 12px; border-bottom: 1px solid #e0e0e0; font-weight: 600; color: #333; font-size: 13px;">Saved Jobs</div>
-                <div id="jobsList"></div>
-                <div id="noJobs" style="text-align: center; color: #666; font-size: 13px; padding: 30px 20px;">
-                    No saved jobs yet. Visit LinkedIn job pages to start tracking!
-                </div>
-            </div>
-
-            <div style="margin-top: 10px; padding: 8px; background: #f8f9fa; border-radius: 4px; font-size: 10px; color: #666;">
-                <button id="toggleDebug" style="background: none; border: none; color: #0073b1; cursor: pointer; font-size: 10px; text-decoration: underline;">Show Debug Info</button>
-                <div id="debugInfo" style="display: none;"></div>
+            <div id="dynamicContent" style="background: white; border-radius: 8px; padding: 16px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                <div style="text-align: center; color: #999;">Loading...</div>
             </div>
         </div>
     `;
     
-    // Set up event listeners for main interface
-    setupMainInterfaceEvents(userId);
+    // Set up event listeners
+    setupEventListeners(userId);
     
-    // Load initial data
-    loadSavedJobs();
+    // Fetch stats and decide what to show
+    try {
+        const stats = await fetchJobStats(userId);
+        
+        if (stats.total === 0) {
+            // New user - show instructions
+            renderInstructions();
+        } else {
+            // Active user - show recent jobs
+            const recentJobs = await fetchRecentJobs(userId, 3);
+            renderRecentJobs(stats.total, recentJobs);
+        }
+    } catch (error) {
+        console.error('Error loading data:', error);
+        renderError(userId);
+    }
 }
 
-function setupMainInterfaceEvents(userId) {
-    // Change user ID button
+// ========================================
+// EVENT LISTENERS
+// ========================================
+function setupEventListeners(userId) {
+    // Change User ID button
     document.getElementById('changeUserIdBtn').addEventListener('click', function() {
-        if (confirm('Are you sure you want to change your User ID? This will clear all saved jobs.')) {
-            chrome.storage.local.clear(function() {
+        if (confirm('Change User ID? Your saved jobs will remain on the server.')) {
+            chrome.storage.local.remove(['userId', 'userIdSet'], function() {
                 showSetupScreen();
             });
         }
     });
     
-    // Refresh button - Reloads saved jobs from storage
-    document.getElementById('refreshData').addEventListener('click', loadSavedJobs);
-    
-    // Clear all button - Deletes all saved jobs
-    document.getElementById('clearAll').addEventListener('click', function() {
-        if (confirm('Clear all saved jobs? This cannot be undone.')) {
-            chrome.storage.local.set({ savedJobs: [] }, loadSavedJobs);
-        }
+    // Open Dashboard button
+    document.getElementById('openDashboard').addEventListener('click', function() {
+        // TODO: Replace with your actual dashboard URL when ready
+        const dashboardUrl = `https://your-dashboard.railway.app?userId=${userId}`;
+        chrome.tabs.create({ url: dashboardUrl });
+        window.close();
     });
-    
-    // View Data button - Shows all jobs in console table format
-    document.getElementById('viewConsole').addEventListener('click', function() {
-        chrome.storage.local.get(['savedJobs'], function(result) {
-            const jobs = result.savedJobs || [];
-            
-            if (jobs.length === 0) {
-                alert('No saved jobs to display');
-                return;
+}
+
+// ========================================
+// API FUNCTIONS
+// ========================================
+
+// Fetch job statistics from server
+async function fetchJobStats(userId) {
+    try {
+        const response = await fetch('https://jobtracker-production-2ed3.up.railway.app/api/stats', {
+            headers: {
+                'x-user-id': userId
             }
-            
-            // Log to console in table format
-            console.clear();
-            console.log('%c=== ALL SAVED JOBS ===', 'color: green; font-size: 16px; font-weight: bold;');
-            console.log('Total jobs:', jobs.length);
-            console.table(jobs.map(job => ({
-                Title: job.title,
-                Company: job.company,
-                Location: job.location,
-                Salary: job.salary,
-                Type: job.jobType,
-                Experience: job.experienceLevel,
-                Arrangement: job.workArrangement,
-                Date: job.applicationDate,
-                URL: job.url
-            })));
-            console.log('Full data with keywords:', jobs);
-            
-            alert(`Viewing ${jobs.length} jobs in console. Press F12 to see the data table.`);
         });
-    });
-    
-    // Toggle debug info
-    document.getElementById('toggleDebug').addEventListener('click', function() {
-        const debugInfo = document.getElementById('debugInfo');
-        if (debugInfo.style.display === 'none') {
-            showDebugInfo();
-            this.textContent = 'Hide Debug Info';
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            // Update the job count display
+            document.getElementById('jobCount').textContent = result.data.total;
+            return result.data;
         } else {
-            debugInfo.style.display = 'none';
-            this.textContent = 'Show Debug Info';
+            throw new Error('Failed to fetch stats');
         }
-    });
+    } catch (error) {
+        console.error('Error fetching stats:', error);
+        document.getElementById('jobCount').textContent = '?';
+        throw error;
+    }
 }
 
-function loadSavedJobs() {
-    chrome.storage.local.get(['savedJobs'], function(result) {
-        const savedJobs = result.savedJobs || [];
-        
-        // Update job count
-        document.getElementById('jobCount').textContent = savedJobs.length;
-        
-        const jobsList = document.getElementById('jobsList');
-        const noJobs = document.getElementById('noJobs');
-        
-        if (savedJobs.length === 0) {
-            jobsList.innerHTML = '';
-            noJobs.style.display = 'block';
-            return;
-        }
-        
-        noJobs.style.display = 'none';
-        
-        // Sort jobs by most recent first
-        savedJobs.sort((a, b) => new Date(b.extractedAt) - new Date(a.extractedAt));
-        
-        jobsList.innerHTML = '';
-        savedJobs.slice(0, 10).forEach(job => {
-            const div = document.createElement('div');
-            div.style.cssText = 'padding: 12px; border-bottom: 1px solid #f0f0f0; cursor: pointer; transition: background-color 0.2s;';
-            div.innerHTML = `
-                <div style="font-weight: 600; color: #333; font-size: 13px; margin-bottom: 4px;">${job.title || 'No title'}</div>
-                <div style="color: #0073b1; font-size: 12px; margin-bottom: 2px;">${job.company || 'No company'}</div>
-                <div style="color: #666; font-size: 11px; margin-bottom: 4px;">${job.location || 'No location'}</div>
-                <div style="color: #999; font-size: 10px;">Saved: ${new Date(job.extractedAt).toLocaleDateString()}</div>
-            `;
-            
-            div.addEventListener('mouseover', () => div.style.backgroundColor = '#f8f9fa');
-            div.addEventListener('mouseout', () => div.style.backgroundColor = '');
-            
-            if (job.url) {
-                div.addEventListener('click', () => {
-                    chrome.tabs.create({ url: job.url });
-                    window.close();
-                });
+// Fetch recent jobs from server
+async function fetchRecentJobs(userId, limit = 3) {
+    try {
+        const response = await fetch(`https://jobtracker-production-2ed3.up.railway.app/api/applications?userId=${userId}`, {
+            headers: {
+                'x-user-id': userId
             }
-            
-            jobsList.appendChild(div);
         });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            // Return only the most recent jobs
+            return result.data.slice(0, limit);
+        } else {
+            throw new Error('Failed to fetch jobs');
+        }
+    } catch (error) {
+        console.error('Error fetching recent jobs:', error);
+        throw error;
+    }
+}
+
+// ========================================
+// RENDERING FUNCTIONS
+// ========================================
+
+// Render instructions for new users (0 jobs)
+function renderInstructions() {
+    const dynamicContent = document.getElementById('dynamicContent');
+    
+    dynamicContent.innerHTML = `
+        <div style="text-align: center;">
+            <div style="font-size: 48px; margin-bottom: 16px;">🎯</div>
+            <h3 style="margin: 0 0 12px 0; color: #333; font-size: 16px;">Get Started</h3>
+            <div style="text-align: left; background: #f8f9fa; padding: 15px; border-radius: 6px; margin-bottom: 16px; line-height: 1.6;">
+                <div style="margin-bottom: 8px;">
+                    <strong>1.</strong> Visit any LinkedIn job posting
+                </div>
+                <div style="margin-bottom: 8px;">
+                    <strong>2.</strong> Click <span style="background: #0073b1; color: white; padding: 2px 6px; border-radius: 3px; font-size: 11px;">✅ Mark as Applied</span>
+                </div>
+                <div>
+                    <strong>3.</strong> Job saved automatically!
+                </div>
+            </div>
+            <div style="background: #e3f2fd; padding: 12px; border-radius: 6px; font-size: 12px; color: #1976d2; text-align: left;">
+                💡 <strong>Tip:</strong> Your first saved job will appear here instantly!
+            </div>
+        </div>
+    `;
+}
+
+// Render recent jobs for active users (1+ jobs)
+function renderRecentJobs(totalCount, jobs) {
+    const dynamicContent = document.getElementById('dynamicContent');
+    
+    if (!jobs || jobs.length === 0) {
+        renderInstructions();
+        return;
+    }
+    
+    dynamicContent.innerHTML = `
+        <div style="margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid #e0e0e0;">
+            <div style="font-weight: 600; color: #333; font-size: 14px;">Recent Activity</div>
+        </div>
+        
+        <div id="jobList"></div>
+        
+        <div style="text-align: center; margin-top: 12px; padding-top: 12px; border-top: 1px solid #e0e0e0;">
+            <button id="viewAllBtn" style="background: none; border: none; color: #0073b1; cursor: pointer; font-size: 12px; text-decoration: underline;">
+                View all ${totalCount} jobs →
+            </button>
+        </div>
+    `;
+    
+    // Render each job
+    const jobList = document.getElementById('jobList');
+    jobs.forEach((job, index) => {
+        const jobCard = createJobCard(job);
+        jobList.appendChild(jobCard);
+        
+        // Add separator except for last item
+        if (index < jobs.length - 1) {
+            const separator = document.createElement('div');
+            separator.style.cssText = 'height: 1px; background: #f0f0f0; margin: 8px 0;';
+            jobList.appendChild(separator);
+        }
+    });
+    
+    // View all button handler
+    document.getElementById('viewAllBtn').addEventListener('click', function() {
+        document.getElementById('openDashboard').click();
     });
 }
 
-function showDebugInfo() {
-    chrome.storage.local.get(null, function(result) {
-        const debugInfo = document.getElementById('debugInfo');
-        debugInfo.innerHTML = `
-            <strong>Debug Information:</strong><br>
-            User ID Set: ${result.userIdSet || false}<br>
-            User ID: ${result.userId || 'Not set'}<br>
-            Jobs Count: ${result.savedJobs?.length || 0}<br>
-            Storage Keys: ${Object.keys(result).join(', ')}<br>
-        `;
-        debugInfo.style.display = 'block';
+// Create individual job card component
+function createJobCard(job) {
+    const card = document.createElement('div');
+    card.style.cssText = 'cursor: pointer; padding: 8px; border-radius: 4px; transition: background-color 0.2s;';
+    
+    // Use createdAt for "time ago" (when saved)
+    const savedDate = new Date(job.createdAt);
+    const timeAgo = getTimeAgo(savedDate);
+    
+    // Use dateApplied for "applied date" (when user applied)
+    const appliedDate = new Date(job.dateApplied);
+    const appliedDateStr = appliedDate.toLocaleDateString();
+    
+    card.innerHTML = `
+        <div style="font-weight: 600; color: #333; font-size: 13px; margin-bottom: 4px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
+            ${job.position}
+        </div>
+        <div style="display: flex; justify-content: space-between; align-items: center; font-size: 11px; margin-bottom: 2px;">
+            <span style="color: #0073b1; font-weight: 500;">${job.company}</span>
+            <span style="color: #999;">${timeAgo}</span>
+        </div>
+        <div style="font-size: 10px; color: #999;">
+            Applied: ${appliedDateStr}
+        </div>
+    `;
+    
+    // Hover effect
+    card.addEventListener('mouseenter', () => {
+        card.style.backgroundColor = '#f8f9fa';
+    });
+    
+    card.addEventListener('mouseleave', () => {
+        card.style.backgroundColor = 'transparent';
+    });
+    
+    // Click to open job URL
+    if (job.jobUrl) {
+        card.addEventListener('click', () => {
+            chrome.tabs.create({ url: job.jobUrl });
+            window.close();
+        });
+    }
+    
+    return card;
+}
+
+// Helper function to format time ago
+function getTimeAgo(date) {
+    const now = new Date();
+    const jobDate = new Date(date);
+    
+    // Calculate difference in milliseconds
+    const diffMs = now - jobDate;
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+    
+    // For very recent jobs (< 1 hour)
+    if (diffMins < 1) {
+        return 'Just now';
+    } else if (diffMins < 60) {
+        return `${diffMins}m ago`;
+    } else if (diffHours < 24) {
+        return `${diffHours}h ago`;
+    } else if (diffDays === 1) {
+        return 'Yesterday';
+    } else if (diffDays < 7) {
+        return `${diffDays}d ago`;
+    } else {
+        // Use toLocaleDateString() which automatically uses local timezone
+        return jobDate.toLocaleDateString();
+    }
+}
+
+// Render error state
+function renderError(userId) {
+    const dynamicContent = document.getElementById('dynamicContent');
+    
+    dynamicContent.innerHTML = `
+        <div style="text-align: center; padding: 20px;">
+            <div style="font-size: 48px; margin-bottom: 12px;">⚠️</div>
+            <div style="color: #666; font-size: 14px; margin-bottom: 12px;">
+                Unable to load your jobs
+            </div>
+            <button id="retryBtn" style="background: #0073b1; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-size: 12px;">
+                Retry
+            </button>
+        </div>
+    `;
+    
+    document.getElementById('retryBtn').addEventListener('click', function() {
+        showMainInterface(userId);
     });
 }
