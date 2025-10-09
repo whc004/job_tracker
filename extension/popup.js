@@ -1,20 +1,24 @@
 // ========================================
-// POPUP.JS - HYBRID APPROACH
+// POPUP.JS - SERVER-SYNCED APPROACH
 // Job Tracker Extension
 // ========================================
+
+const API_URL = 'https://jobtracker-production-2ed3.up.railway.app/api';
 
 // ========================================
 // INITIALIZATION
 // ========================================
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('Popup loading...');
+    console.log('🔄 Popup loading...');
     
     // Check if user ID is set
     chrome.storage.local.get(['userId', 'userIdSet'], function(result) {
         if (result.userIdSet && result.userId) {
-            // User ID is set - show main interface
+            console.log('✅ User ID found:', result.userId);
+            // User ID is set - show main interface and sync with server
             showMainInterface(result.userId);
         } else {
+            console.log('⚠️ No User ID set');
             // No user ID - show setup screen
             showSetupScreen();
         }
@@ -68,7 +72,7 @@ function showSetupScreen() {
     });
 }
 
-function handleUserIdSubmission() {
+async function handleUserIdSubmission() {
     const userIdInput = document.getElementById('userIdInput');
     const errorMessage = document.getElementById('errorMessage');
     const setBtn = document.getElementById('setUserIdBtn');
@@ -86,29 +90,73 @@ function handleUserIdSubmission() {
         return;
     }
     
-    // Simple format validation
     if (!/^[a-zA-Z0-9_-]+$/.test(inputValue)) {
         showError('User ID can only contain letters, numbers, underscores, and dashes');
         return;
     }
     
-    // Save the user ID
-    setBtn.textContent = 'Setting up...';
+    // Update UI
+    setBtn.textContent = 'Verifying with server...';
     setBtn.disabled = true;
+    userIdInput.disabled = true;
     
-    chrome.storage.local.set({
-        userId: inputValue,
-        userIdSet: true,
-        userIdSetAt: new Date().toISOString()
-    }, function() {
-        console.log('User ID saved:', inputValue);
+    // ⭐ IMPORTANT: Verify User ID with server before saving
+    try {
+        console.log('🔍 Verifying User ID with server:', inputValue);
         
-        // Show success and reload to main interface
-        setBtn.textContent = 'Success!';
-        setTimeout(() => {
-            showMainInterface(inputValue);
-        }, 1000);
-    });
+        const response = await fetch(`${API_URL}/stats`, {
+            method: 'GET',
+            headers: {
+                'x-user-id': inputValue,
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        const result = await response.json();
+        
+        if (response.ok && result.success) {
+            console.log('✅ User ID verified with server');
+            
+            // Save the user ID to local storage
+            chrome.storage.local.set({
+                userId: inputValue,
+                userIdSet: true,
+                userIdSetAt: new Date().toISOString()
+            }, function() {
+                console.log('💾 User ID saved to local storage');
+                
+                // Reload all LinkedIn tabs to inject new userId
+                chrome.tabs.query({url: "*://*.linkedin.com/*"}, function(tabs) {
+                    console.log(`🔄 Reloading ${tabs.length} LinkedIn tabs...`);
+                    tabs.forEach(tab => {
+                        chrome.tabs.reload(tab.id);
+                    });
+                });
+                
+                // Show success message
+                setBtn.textContent = '✅ Success! Loading your data...';
+                
+                // Transition to main interface
+                setTimeout(() => {
+                    showMainInterface(inputValue);
+                }, 1500);
+            });
+        } else {
+            // Server rejected the User ID
+            console.error('❌ Server rejected User ID:', result.message);
+            showError(result.message || 'Invalid User ID. Please check and try again.');
+            setBtn.textContent = 'Set User ID';
+            setBtn.disabled = false;
+            userIdInput.disabled = false;
+        }
+        
+    } catch (error) {
+        console.error('❌ Error verifying User ID:', error);
+        showError('Could not connect to server. Please check your internet connection and try again.');
+        setBtn.textContent = 'Set User ID';
+        setBtn.disabled = false;
+        userIdInput.disabled = false;
+    }
     
     function showError(message) {
         errorMessage.textContent = message;
@@ -118,10 +166,12 @@ function handleUserIdSubmission() {
 }
 
 // ========================================
-// MAIN INTERFACE - HYBRID APPROACH
+// MAIN INTERFACE - ALWAYS SYNC WITH SERVER
 // ========================================
 async function showMainInterface(userId) {
-    // First, show loading state
+    console.log('🎨 Rendering main interface for:', userId);
+    
+    // First, show loading state immediately
     document.body.innerHTML = `
         <div style="width: 420px; padding: 16px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; background: #f8f9fa;">
             <div style="text-align: center; margin-bottom: 16px; background: white; padding: 16px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
@@ -134,38 +184,88 @@ async function showMainInterface(userId) {
             </div>
 
             <div style="background: white; padding: 16px; border-radius: 6px; margin-bottom: 16px; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-                <div style="font-size: 32px; font-weight: bold; color: #0073b1;" id="jobCount">...</div>
+                <div style="font-size: 32px; font-weight: bold; color: #0073b1;" id="jobCount">
+                    <div class="spinner" style="border: 3px solid #f3f3f3; border-top: 3px solid #0073b1; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; margin: 0 auto;"></div>
+                </div>
                 <div style="color: #666; font-size: 14px;">Jobs Saved</div>
             </div>
 
             <button id="openDashboard" style="width: 100%; padding: 12px; background: #0073b1; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 500; margin-bottom: 16px;">
                 📊 Open Dashboard
             </button>
+            
+            <button id="refreshBtn" style="width: 100%; padding: 10px; background: white; color: #0073b1; border: 1px solid #0073b1; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 500; margin-bottom: 16px;">
+                🔄 Refresh from Server
+            </button>
 
             <div id="dynamicContent" style="background: white; border-radius: 8px; padding: 16px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-                <div style="text-align: center; color: #999;">Loading...</div>
+                <div style="text-align: center; color: #999;">
+                    <div class="spinner" style="border: 3px solid #f3f3f3; border-top: 3px solid #0073b1; border-radius: 50%; width: 20px; height: 20px; animation: spin 1s linear infinite; margin: 0 auto 10px;"></div>
+                    Syncing with server...
+                </div>
+            </div>
+            
+            <div id="lastSync" style="text-align: center; color: #999; font-size: 11px; margin-top: 8px;">
+                Last synced: Loading...
             </div>
         </div>
+        
+        <style>
+            @keyframes spin {
+                0% { transform: rotate(0deg); }
+                100% { transform: rotate(360deg); }
+            }
+        </style>
     `;
     
-    // Set up event listeners
+    // Set up event listeners FIRST
     setupEventListeners(userId);
     
-    // Fetch stats and decide what to show
+    // Then fetch and sync with server
+    await syncWithServer(userId);
+}
+
+// ========================================
+// SERVER SYNC FUNCTION
+// ========================================
+async function syncWithServer(userId) {
+    console.log('🔄 Syncing with server for user:', userId);
+    
     try {
+        // Fetch stats from server
         const stats = await fetchJobStats(userId);
+        console.log('📊 Stats received:', stats);
+        
+        // Update last sync time
+        updateLastSyncTime();
         
         if (stats.total === 0) {
             // New user - show instructions
             renderInstructions();
         } else {
-            // Active user - show recent jobs
+            // Active user - fetch and show recent jobs
+            console.log('📥 Fetching recent jobs...');
             const recentJobs = await fetchRecentJobs(userId, 3);
+            console.log('✅ Recent jobs received:', recentJobs.length, 'jobs');
             renderRecentJobs(stats.total, recentJobs);
         }
+        
     } catch (error) {
-        console.error('Error loading data:', error);
+        console.error('❌ Error syncing with server:', error);
         renderError(userId);
+    }
+}
+
+function updateLastSyncTime() {
+    const lastSyncElement = document.getElementById('lastSync');
+    if (lastSyncElement) {
+        const now = new Date();
+        const timeStr = now.toLocaleTimeString('en-US', { 
+            hour: '2-digit', 
+            minute: '2-digit',
+            second: '2-digit'
+        });
+        lastSyncElement.textContent = `Last synced: ${timeStr}`;
     }
 }
 
@@ -174,60 +274,115 @@ async function showMainInterface(userId) {
 // ========================================
 function setupEventListeners(userId) {
     // Change User ID button
-    document.getElementById('changeUserIdBtn').addEventListener('click', function() {
-        if (confirm('Change User ID? Your saved jobs will remain on the server.')) {
-            chrome.storage.local.remove(['userId', 'userIdSet'], function() {
-                showSetupScreen();
-            });
-        }
-    });
+    const changeBtn = document.getElementById('changeUserIdBtn');
+    if (changeBtn) {
+        changeBtn.addEventListener('click', function() {
+            if (confirm('Change User ID? Your saved jobs will remain on the server.')) {
+                chrome.storage.local.remove(['userId', 'userIdSet'], function() {
+                    console.log('🗑️ User ID removed from local storage');
+                    showSetupScreen();
+                });
+            }
+        });
+    }
     
     // Open Dashboard button
-    document.getElementById('openDashboard').addEventListener('click', function() {
-        // TODO: Replace with your actual dashboard URL when ready
-        const dashboardUrl = `https://your-dashboard.railway.app?userId=${userId}`;
-        chrome.tabs.create({ url: dashboardUrl });
-        window.close();
-    });
+    const dashboardBtn = document.getElementById('openDashboard');
+    if (dashboardBtn) {
+        dashboardBtn.addEventListener('click', function() {
+            // TODO: Replace with your actual dashboard URL
+            const dashboardUrl = `https://your-dashboard.railway.app?userId=${userId}`;
+            chrome.tabs.create({ url: dashboardUrl });
+            window.close();
+        });
+    }
+    
+    // ⭐ NEW: Refresh button
+    const refreshBtn = document.getElementById('refreshBtn');
+    if (refreshBtn) {
+        refreshBtn.addEventListener('click', async function() {
+            console.log('🔄 Manual refresh triggered');
+            refreshBtn.textContent = '⏳ Syncing...';
+            refreshBtn.disabled = true;
+            
+            await syncWithServer(userId);
+            
+            refreshBtn.textContent = '🔄 Refresh from Server';
+            refreshBtn.disabled = false;
+        });
+    }
 }
 
 // ========================================
-// API FUNCTIONS
+// API FUNCTIONS WITH RETRY LOGIC
 // ========================================
 
-// Fetch job statistics from server
-async function fetchJobStats(userId) {
+async function fetchJobStats(userId, retryCount = 0) {
     try {
-        const response = await fetch('https://jobtracker-production-2ed3.up.railway.app/api/stats', {
+        console.log(`📊 Fetching stats (attempt ${retryCount + 1})...`);
+        
+        const response = await fetch(`${API_URL}/stats`, {
+            method: 'GET',
             headers: {
-                'x-user-id': userId
+                'x-user-id': userId,
+                'Content-Type': 'application/json'
             }
         });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
         
         const result = await response.json();
         
         if (result.success) {
             // Update the job count display
-            document.getElementById('jobCount').textContent = result.data.total;
+            const jobCountElement = document.getElementById('jobCount');
+            if (jobCountElement) {
+                jobCountElement.innerHTML = result.data.total;
+            }
             return result.data;
         } else {
-            throw new Error('Failed to fetch stats');
+            throw new Error(result.message || 'Failed to fetch stats');
         }
     } catch (error) {
-        console.error('Error fetching stats:', error);
-        document.getElementById('jobCount').textContent = '?';
+        console.error(`❌ Error fetching stats (attempt ${retryCount + 1}):`, error);
+        
+        // Retry up to 2 times with exponential backoff
+        if (retryCount < 2) {
+            const delay = Math.pow(2, retryCount) * 1000; // 1s, 2s
+            console.log(`⏳ Retrying in ${delay}ms...`);
+            await new Promise(resolve => setTimeout(resolve, delay));
+            return fetchJobStats(userId, retryCount + 1);
+        }
+        
+        // All retries failed
+        const jobCountElement = document.getElementById('jobCount');
+        if (jobCountElement) {
+            jobCountElement.textContent = '?';
+        }
         throw error;
     }
 }
 
-// Fetch recent jobs from server
-async function fetchRecentJobs(userId, limit = 3) {
+async function fetchRecentJobs(userId, limit = 3, retryCount = 0) {
     try {
-        const response = await fetch(`https://jobtracker-production-2ed3.up.railway.app/api/applications?userId=${userId}`, {
-            headers: {
-                'x-user-id': userId
+        console.log(`📥 Fetching recent jobs (attempt ${retryCount + 1})...`);
+        
+        const response = await fetch(
+            `${API_URL}/applications?userId=${userId}`,
+            {
+                method: 'GET',
+                headers: {
+                    'x-user-id': userId,
+                    'Content-Type': 'application/json'
+                }
             }
-        });
+        );
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
         
         const result = await response.json();
         
@@ -235,10 +390,20 @@ async function fetchRecentJobs(userId, limit = 3) {
             // Return only the most recent jobs
             return result.data.slice(0, limit);
         } else {
-            throw new Error('Failed to fetch jobs');
+            throw new Error(result.message || 'Failed to fetch jobs');
         }
     } catch (error) {
-        console.error('Error fetching recent jobs:', error);
+        console.error(`❌ Error fetching recent jobs (attempt ${retryCount + 1}):`, error);
+        
+        // Retry up to 2 times
+        if (retryCount < 2) {
+            const delay = Math.pow(2, retryCount) * 1000;
+            console.log(`⏳ Retrying in ${delay}ms...`);
+            await new Promise(resolve => setTimeout(resolve, delay));
+            return fetchRecentJobs(userId, limit, retryCount + 1);
+        }
+        
+        // All retries failed
         throw error;
     }
 }
@@ -247,9 +412,9 @@ async function fetchRecentJobs(userId, limit = 3) {
 // RENDERING FUNCTIONS
 // ========================================
 
-// Render instructions for new users (0 jobs)
 function renderInstructions() {
     const dynamicContent = document.getElementById('dynamicContent');
+    if (!dynamicContent) return;
     
     dynamicContent.innerHTML = `
         <div style="text-align: center;">
@@ -273,9 +438,9 @@ function renderInstructions() {
     `;
 }
 
-// Render recent jobs for active users (1+ jobs)
 function renderRecentJobs(totalCount, jobs) {
     const dynamicContent = document.getElementById('dynamicContent');
+    if (!dynamicContent) return;
     
     if (!jobs || jobs.length === 0) {
         renderInstructions();
@@ -285,6 +450,7 @@ function renderRecentJobs(totalCount, jobs) {
     dynamicContent.innerHTML = `
         <div style="margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid #e0e0e0;">
             <div style="font-weight: 600; color: #333; font-size: 14px;">Recent Activity</div>
+            <div style="font-size: 11px; color: #999; margin-top: 4px;">Synced from server</div>
         </div>
         
         <div id="jobList"></div>
@@ -298,25 +464,29 @@ function renderRecentJobs(totalCount, jobs) {
     
     // Render each job
     const jobList = document.getElementById('jobList');
-    jobs.forEach((job, index) => {
-        const jobCard = createJobCard(job);
-        jobList.appendChild(jobCard);
-        
-        // Add separator except for last item
-        if (index < jobs.length - 1) {
-            const separator = document.createElement('div');
-            separator.style.cssText = 'height: 1px; background: #f0f0f0; margin: 8px 0;';
-            jobList.appendChild(separator);
-        }
-    });
+    if (jobList) {
+        jobs.forEach((job, index) => {
+            const jobCard = createJobCard(job);
+            jobList.appendChild(jobCard);
+            
+            // Add separator except for last item
+            if (index < jobs.length - 1) {
+                const separator = document.createElement('div');
+                separator.style.cssText = 'height: 1px; background: #f0f0f0; margin: 8px 0;';
+                jobList.appendChild(separator);
+            }
+        });
+    }
     
     // View all button handler
-    document.getElementById('viewAllBtn').addEventListener('click', function() {
-        document.getElementById('openDashboard').click();
-    });
+    const viewAllBtn = document.getElementById('viewAllBtn');
+    if (viewAllBtn) {
+        viewAllBtn.addEventListener('click', function() {
+            document.getElementById('openDashboard').click();
+        });
+    }
 }
 
-// Create individual job card component
 function createJobCard(job) {
     const card = document.createElement('div');
     card.style.cssText = 'cursor: pointer; padding: 8px; border-radius: 4px; transition: background-color 0.2s;';
@@ -362,18 +532,15 @@ function createJobCard(job) {
     return card;
 }
 
-// Helper function to format time ago
 function getTimeAgo(date) {
     const now = new Date();
     const jobDate = new Date(date);
     
-    // Calculate difference in milliseconds
     const diffMs = now - jobDate;
     const diffMins = Math.floor(diffMs / 60000);
     const diffHours = Math.floor(diffMs / 3600000);
     const diffDays = Math.floor(diffMs / 86400000);
     
-    // For very recent jobs (< 1 hour)
     if (diffMins < 1) {
         return 'Just now';
     } else if (diffMins < 60) {
@@ -385,28 +552,35 @@ function getTimeAgo(date) {
     } else if (diffDays < 7) {
         return `${diffDays}d ago`;
     } else {
-        // Use toLocaleDateString() which automatically uses local timezone
         return jobDate.toLocaleDateString();
     }
 }
 
-// Render error state
 function renderError(userId) {
     const dynamicContent = document.getElementById('dynamicContent');
+    if (!dynamicContent) return;
     
     dynamicContent.innerHTML = `
         <div style="text-align: center; padding: 20px;">
             <div style="font-size: 48px; margin-bottom: 12px;">⚠️</div>
             <div style="color: #666; font-size: 14px; margin-bottom: 12px;">
-                Unable to load your jobs
+                Unable to sync with server
+            </div>
+            <div style="font-size: 12px; color: #999; margin-bottom: 16px;">
+                Check your internet connection
             </div>
             <button id="retryBtn" style="background: #0073b1; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-size: 12px;">
-                Retry
+                Try Again
             </button>
         </div>
     `;
     
-    document.getElementById('retryBtn').addEventListener('click', function() {
-        showMainInterface(userId);
-    });
+    const retryBtn = document.getElementById('retryBtn');
+    if (retryBtn) {
+        retryBtn.addEventListener('click', async function() {
+            retryBtn.textContent = '⏳ Syncing...';
+            retryBtn.disabled = true;
+            await syncWithServer(userId);
+        });
+    }
 }

@@ -1,4 +1,4 @@
-// LinkedIn Job Extractor - Complete Fixed Version
+// LinkedIn Job Extractor - Complete Fixed Version with Duplicate Detection
 console.log('Job Tracker content script loading...');
 
 // global variable for common keyword
@@ -130,11 +130,32 @@ class LinkedInJobExtractor {
     }
   }
 
+  // ⭐ NEW METHOD: Extract LinkedIn Job ID from URL
+  extractJobId(url) {
+    if (!url) return null;
+    
+    // Match pattern: /jobs/view/123456
+    const match = url.match(/\/jobs\/view\/(\d+)/);
+    
+    if (match && match[1]) {
+      console.log('✅ Job ID extracted:', match[1]);
+      return match[1]; // Returns just the ID: "123456"
+    }
+    
+    console.log('❌ No job ID found in URL:', url);
+    return null;
+  }
+
   extractJobData() {
     console.log('Extracting job data...');
     
     let jobUrl = this.extractJobURL(window.location.href);
     if (!jobUrl) jobUrl = window.location.href;
+    
+    // ⭐ NEW: Extract LinkedIn Job ID for duplicate detection
+    const linkedinJobId = this.extractJobId(jobUrl);
+    console.log('LinkedIn Job ID:', linkedinJobId);
+    
     const currentTimestamp = new Date().toISOString();
     
     const data = {
@@ -148,18 +169,17 @@ class LinkedInJobExtractor {
       workArrangement: this.extractWorkArrangement(),
       
       // Skills and keywords
-      // optional
       keywords: this.extractKeywords(),
       
       // Metadata
       url: jobUrl,
+      linkedinJobId: linkedinJobId, // ⭐ NEW FIELD for duplicate detection
       extractedAt: currentTimestamp,
         
       // Application tracking fields
       applicationStatus: 'Applied',
       applicationDate: new Date().toISOString().split('T')[0],
       notes: '',
-      // optional
       priority: 'medium',
       
       // User identification
@@ -171,109 +191,89 @@ class LinkedInJobExtractor {
     return data;
   }
 
-extractJobURL(currentUrl) {
-  //console.log('=== Extracting Job URL ===');
-  //console.log('Current URL:', currentUrl);
-  
-  // Check current URL first
-  if (currentUrl.includes('/jobs/view/')) {
-    const match = currentUrl.match(/\/jobs\/view\/\d+/);
-    if (match) {
-      return `https://www.linkedin.com${match[0]}`;
-    }
-  }
-  
-  // Find any link with /jobs/view/ in href
-  const link = document.querySelector('a[href*="/jobs/view/"]');
-  //console.log('link : ', link);
-  if (link) {
-    const href = link.getAttribute('href');
-    // Split by "/" and find the job ID
-    // href looks like: "/jobs/view/3711904257/?alternateChannel=..."
-    const parts = href.split('/');
-    const viewIndex = parts.indexOf('view');
-    
-    if (viewIndex !== -1 && parts[viewIndex + 1]) {
-      // Get the ID (might have query params, so clean it)
-      const idPart = parts[viewIndex + 1].split('?')[0];
-      const jobId = idPart.match(/\d+/);
-      
-      if (jobId) {
-        const cleanUrl = `https://www.linkedin.com/jobs/view/${jobId[0]}`;
-        return cleanUrl;
+  extractJobURL(currentUrl) {
+    // Check current URL first
+    if (currentUrl.includes('/jobs/view/')) {
+      const match = currentUrl.match(/\/jobs\/view\/\d+/);
+      if (match) {
+        return `https://www.linkedin.com${match[0]}`;
       }
     }
+    
+    // Find any link with /jobs/view/ in href
+    const link = document.querySelector('a[href*="/jobs/view/"]');
+    if (link) {
+      const href = link.getAttribute('href');
+      const parts = href.split('/');
+      const viewIndex = parts.indexOf('view');
+      
+      if (viewIndex !== -1 && parts[viewIndex + 1]) {
+        const idPart = parts[viewIndex + 1].split('?')[0];
+        const jobId = idPart.match(/\d+/);
+        
+        if (jobId) {
+          const cleanUrl = `https://www.linkedin.com/jobs/view/${jobId[0]}`;
+          return cleanUrl;
+        }
+      }
+    }
+    
+    console.log('No job URL found');
+    return null;
   }
-  
-  console.log('No job URL found');
-  return null;
-}
 
-extractJobposition() {
-  const link = document.querySelector('a[href*="/jobs/view/"]');
-  if (link && link.textContent.trim()) {
-    const position = link.textContent.trim();
-    return position;
-  }
-  // if the position is not with the link
-  const selectors = [
-    'h1.job-details-jobs-unified-top-card__job-title',
-    'h1.jobs-unified-top-card__job-title',
-    '.job-details-jobs-unified-top-card__job-title h1',
-    'h1[class*="job-title"]',
-    '.jobs-unified-top-card__job-title h1'
-  ];
-  
-  for (let i = 0; i < selectors.length; i++) {
-    const selector = selectors[i];
-    console.log(`Trying selector ${i + 1}/${selectors.length}: ${selector}`);
-    
-    const element = document.querySelector(selector);
-    
-    if (element && element.textContent.trim()) {
-      const position = element.textContent.trim();
-      console.log('✓ SUCCESS - position found:', position);
-      console.log('Selector used:', selector);
+  extractJobposition() {
+    const link = document.querySelector('a[href*="/jobs/view/"]');
+    if (link && link.textContent.trim()) {
+      const position = link.textContent.trim();
       return position;
-    } 
-    else {
-      console.log('✗ Failed - No element or empty text');
     }
+    
+    const selectors = [
+      'h1.job-details-jobs-unified-top-card__job-title',
+      'h1.jobs-unified-top-card__job-title',
+      '.job-details-jobs-unified-top-card__job-title h1',
+      'h1[class*="job-title"]',
+      '.jobs-unified-top-card__job-title h1'
+    ];
+    
+    for (let i = 0; i < selectors.length; i++) {
+      const selector = selectors[i];
+      const element = document.querySelector(selector);
+      
+      if (element && element.textContent.trim()) {
+        const position = element.textContent.trim();
+        console.log('✓ SUCCESS - position found:', position);
+        return position;
+      }
+    }
+    
+    console.log('All selectors failed - returning fallback');
+    return 'Job position Not Found';
   }
-  
-  console.log('All selectors failed - returning fallback');
-  return 'Job position Not Found';
-}
 
-extractCompanyName() {
-  //console.log('=== Extracting Company Name ===');
-  const selectors = [
-    '.job-details-jobs-unified-top-card__company-name a',
-    '.jobs-unified-top-card__company-name a',
-    '.job-details-jobs-unified-top-card__company-name',
-    '.jobs-unified-top-card__company-name',
-    'a[data-test-id="job-company-name"]'
-  ];
-  
-  for (let i = 0; i < selectors.length; i++) {
-    const selector = selectors[i];
-    //console.log(`Trying selector ${i + 1}/${selectors.length}: ${selector}`);
+  extractCompanyName() {
+    const selectors = [
+      '.job-details-jobs-unified-top-card__company-name a',
+      '.jobs-unified-top-card__company-name a',
+      '.job-details-jobs-unified-top-card__company-name',
+      '.jobs-unified-top-card__company-name',
+      'a[data-test-id="job-company-name"]'
+    ];
     
-    const element = document.querySelector(selector);
-    
-    if (element && element.textContent.trim()) {
-      const company = element.textContent.trim();
-      //console.log('✓ SUCCESS - Company found:', company);
-      //console.log('Selector used:', selector);
-      return company;
-    } else {
-      console.log('✗ Failed - No element or empty text');
+    for (let i = 0; i < selectors.length; i++) {
+      const selector = selectors[i];
+      const element = document.querySelector(selector);
+      
+      if (element && element.textContent.trim()) {
+        const company = element.textContent.trim();
+        return company;
+      }
     }
+    
+    console.log('All selectors failed - returning fallback');
+    return 'Company Not Found';
   }
-  
-  console.log('All selectors failed - returning fallback');
-  return 'Company Not Found';
-}
 
   extractLocation() {
     const locationSelectors = [
@@ -288,12 +288,9 @@ extractCompanyName() {
       for (const element of elements) {
         const text = element.textContent.trim();
         
-        // Check if it looks like a location (contains a comma and short words)
         if (text.includes(',') && text.length < 50) {
-          // Simple validation: should have format like "City, ST"
           const parts = text.split(',');
           if (parts.length === 2 && parts[1].trim().length === 2) {
-            //console.log('Found location:', text);
             return text;
           }
         }
@@ -304,7 +301,6 @@ extractCompanyName() {
   }
 
   extractJobType() {
-    // Look in the preferences section first (most reliable)
     const preferenceButtons = document.querySelectorAll('.job-details-fit-level-preferences .tvm__text strong');
     
     for (const button of preferenceButtons) {
@@ -317,7 +313,6 @@ extractCompanyName() {
       if (text.includes('internship') || text.includes('intern')) return 'Internship';
     }
     
-    // Fallback to other selectors
     const selectors = [
       '.job-details-jobs-unified-top-card__job-insight .tvm__text',
       '.jobs-unified-top-card__job-insight .tvm__text'
@@ -340,7 +335,6 @@ extractCompanyName() {
   }
 
   extractWorkArrangement() {
-    // Check the preferences section first
     const preferenceButtons = document.querySelectorAll('.job-details-fit-level-preferences .tvm__text strong');
     
     for (const button of preferenceButtons) {
@@ -351,7 +345,6 @@ extractCompanyName() {
       if (text === 'on-site' || text === 'onsite') return 'On-site';
     }
     
-    // Fallback to page text search
     const pageText = document.body.textContent.toLowerCase();
     
     if (pageText.includes('fully remote') || pageText.includes('100% remote')) return 'Remote';
@@ -362,22 +355,15 @@ extractCompanyName() {
   }
 
   extractSalary() {
-    // Check the preferences section first - most accurate
     const preferenceButtons = document.querySelectorAll('.job-details-fit-level-preferences .tvm__text strong');
-    // Match salary patterns like: $50K, $150,000, $75k, $100K/yr
-    // \$ - literal dollar sign
-    // [\d,]+ - one or more digits or commas (handles: 50000 or 50,000)
-    // [Kk]? - optional K or k for thousands (handles: $50K or $50000)
-    // (/\$[\d,]+[Kk]?/.test(text)) 
+    
     for (const button of preferenceButtons) {
       const text = button.textContent.trim();
-      // Check if it contains salary pattern
       if (/\$[\d,]+[Kk]?/.test(text)) {
         return text;
       }
     }
     
-    // Fallback to other locations
     const selectors = [
       '.job-details-jobs-unified-top-card__job-insight .tvm__text',
       '.jobs-unified-top-card__job-insight .tvm__text'
@@ -397,7 +383,6 @@ extractCompanyName() {
   }
 
   extractExperienceLevel() {
-    // Check preferences section first (most reliable)
     const preferenceButtons = document.querySelectorAll('.job-details-fit-level-preferences .tvm__text strong');
     
     for (const button of preferenceButtons) {
@@ -409,7 +394,6 @@ extractCompanyName() {
       if (text.includes('director') || text.includes('principal')) return 'Executive Level';
     }
     
-    // Fallback: check job position for experience indicators
     const position = this.extractJobposition().toLowerCase();
     if (position.includes('senior') || position.includes('sr.') || position.includes('staff')) return 'Senior Level';
     if (position.includes('junior') || position.includes('jr.')) return 'Entry Level';
@@ -423,15 +407,12 @@ extractCompanyName() {
   extractKeywords() {
     const keywords = new Set();
     
-    // Create regex pattern from technical terms
     const pattern = new RegExp(`\\b(${TECHNICAL_TERMS.join('|')})\\b`, 'gi');
     
-    // Extract from job description
     const content = document.querySelector('.jobs-description-content__text, .jobs-box__html-content');
     if (content) {
       const matches = content.textContent.match(pattern);
       if (matches) {
-        // Normalize case (capitalize first letter for consistency)
         matches.forEach(term => {
           const normalized = term.charAt(0).toUpperCase() + term.slice(1).toLowerCase();
           keywords.add(normalized);
@@ -439,20 +420,16 @@ extractCompanyName() {
       }
     }
     
-    // Extract meaningful words from position (exclude common words and company names)
     const position = this.extractJobposition();
     if (position !== 'Job position Not Found') {
       position.split(/[\s,\-\(\)]+/).forEach(word => {
-        // Remove punctuation like !, ., ?
         const cleaned = word.replace(/[!.?]/g, '').trim();
-        // Only add if length > 2 and not a common word
         if (cleaned.length > 2 && !this.isCommonWord(cleaned)) {
           keywords.add(cleaned);
         }
       });
     }
   
-    // Return all unique keywords
     return Array.from(keywords);
   }
 
@@ -467,7 +444,6 @@ extractCompanyName() {
   async extractAndSave() {
     console.log('Extract and save triggered...');
     
-    // Check if user ID is set
     if (!this.userId) {
       this.showNotification('⚠️ Please set your User ID in the extension popup first!');
       return;
@@ -476,6 +452,7 @@ extractCompanyName() {
     await this.saveToServer(data);
   }
 
+  // ⭐ UPDATED: Handle duplicate detection responses from server
   async saveToServer(data) {
     try {
       console.log('Sending job to server:', data);
@@ -486,10 +463,8 @@ extractCompanyName() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          // USER ID AT TOP LEVEL
           userId: data.userId,
-          
-          // Core fields
+          linkedinJobId: data.linkedinJobId, // ⭐ NEW: Send LinkedIn Job ID
           company: data.company,
           position: data.position,
           location: data.location,
@@ -500,13 +475,9 @@ extractCompanyName() {
           notes: data.notes || '',
           priority: data.priority?.charAt(0).toUpperCase() + data.priority?.slice(1) || 'Medium',
           technicalDetails: data.keywords || [],
-          
-          // Additional fields (now in API schema)
           jobType: data.jobType,
           experienceLevel: data.experienceLevel,
           workArrangement: data.workArrangement,
-          
-          // Optional fields
           contactPerson: '',
           followUpDate: null
         })
@@ -516,11 +487,23 @@ extractCompanyName() {
       
       if (result.success) {
         console.log('✅ Job saved to server!', result);
-        this.showNotification('✅ Job saved to tracker!');
+        
+        // Different messages for update vs new save
+        if (result.isUpdate) {
+          this.showNotification('🔄 Job updated in tracker!');
+        } else {
+          this.showNotification('✅ Job saved to tracker!');
+        }
         return true;
       } else {
         console.error('❌ Server error:', result);
-        this.showNotification('❌ Failed to save: ' + (result.message || 'Unknown error'));
+        
+        // Handle duplicate case with specific message
+        if (result.isDuplicate) {
+          this.showNotification('ℹ️ ' + result.message);
+        } else {
+          this.showNotification('❌ Failed to save: ' + (result.message || 'Unknown error'));
+        }
         return false;
       }
     } catch (error) {
@@ -569,7 +552,7 @@ extractCompanyName() {
       if (notification.parentNode) {
         notification.parentNode.removeChild(notification);
       }
-    }, 7000); // Slightly longer since it's interactive
+    }, 7000);
   }
 
   observeJobSelection() {

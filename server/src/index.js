@@ -43,10 +43,13 @@ app.use(cors()); app.use(express.json());
 app.use((req,_res,next)=>{ console.log(`[REQ] ${req.method} ${req.url}`); next(); });
 console.log('✅ Middleware configured');
 
-// Job Application Schema
+// Job Application Schema - UPDATED WITH LINKEDIN JOB ID
 const jobApplicationSchema = new mongoose.Schema({
   // User identification - REQUIRED for multi-user support
   userId:{ type:String, required:[true,'User ID is required'], index:true, trim:true },
+
+  // ⭐ NEW: LinkedIn Job ID for duplicate detection
+  linkedinJobId:{ type:String, required:false, index:true, trim:true },
 
   // Core job information
   company:{ type:String, required:[true,'Company name is required'], trim:true },
@@ -81,8 +84,17 @@ const jobApplicationSchema = new mongoose.Schema({
 
 // Create compound index for efficient queries by user and date
 jobApplicationSchema.index({ userId:1, dateApplied:-1 });
+
+// ⭐ NEW: Compound unique index for duplicate prevention
+// This prevents the same user from saving the same LinkedIn job twice
+jobApplicationSchema.index({ userId:1, linkedinJobId:1 }, { 
+  unique: true,
+  sparse: true, // Allow null linkedinJobId for manual entries
+  partialFilterExpression: { linkedinJobId: { $exists: true, $ne: null } }
+});
+
 const JobApplication = mongoose.model('JobApplication', jobApplicationSchema);
-console.log('✅ Database model created');
+console.log('✅ Database model created with duplicate prevention index');
 
 // Configure multer for file uploads path
 const upload = multer({ dest:'../uploads/' });
@@ -91,10 +103,10 @@ const upload = multer({ dest:'../uploads/' });
 
 // Health check endpoint - Test this first!
 app.get('/', (_req,res)=>res.json({
-  message:'🎉 Job Tracker API is running!', version:'1.0.0',
+  message:'🎉 Job Tracker API is running!', version:'1.1.0',
   endpoints:[
     'GET /api/applications - Get all applications',
-    'POST /api/applications - Create application',
+    'POST /api/applications - Create application (with duplicate detection)',
     'GET /api/applications/:id - Get single application',
     'PUT /api/applications/:id - Update application',
     'DELETE /api/applications/:id - Delete application',
@@ -120,24 +132,140 @@ app.get('/api/applications', validateUserId, async (req,res)=>{
   }
 });
 
-// POST /api/applications - Create new application
+// POST /api/applications - Create new application WITH DUPLICATE DETECTION
 app.post('/api/applications', validateUserId, async (req,res)=>{
   try{
     console.log('➕ Creating new application for user:', req.userId);
+    console.log('📥 Request body:', JSON.stringify(req.body, null, 2));
+    
+    const { linkedinJobId } = req.body;
+    
     // Build application data with validated userId
-    const applicationData = { ...req.body, userId:req.userId }; // Use validated userId from middleware
-    // Remove _extractedData if it exists (just metadata)
+    const applicationData = { ...req.body, userId:req.userId };
     delete applicationData._extractedData;
 
+    // ============================================
+    // DUPLICATE DETECTION BY LINKEDIN JOB ID
+    // ============================================
+    if (linkedinJobId) {
+      console.log('🔍 Checking for duplicate with LinkedIn Job ID:', linkedinJobId);
+      
+      const existingJob = await JobApplication.findOne({
+        userId: req.userId,
+        linkedinJobId: linkedinJobId
+      });
+
+      if (existingJob) {
+        console.log('⚠️ Duplicate found:', existingJob._id, 'Status:', existingJob.status);
+        
+        // Handle based on existing job's status
+        switch (existingJob.status) {
+          case 'Rejected':
+            console.log('🚫 Blocking re-application - Previously rejected');
+            return res.json({
+              success: false,
+              isDuplicate: true,
+              message: `You were rejected for "${existingJob.position}" at ${existingJob.company}. Cannot reapply to the same posting.`,
+              existing: {
+                id: existingJob._id,
+                position: existingJob.position,
+                company: existingJob.company,
+                status: existingJob.status,
+                dateApplied: existingJob.dateApplied
+              }
+            });
+            
+          case 'Offer':
+          case 'Accepted':
+            console.log('🚫 Blocking re-application - Already has offer');
+            return res.json({
+              success: false,
+              isDuplicate: true,
+              message: `You already have an offer for "${existingJob.position}" at ${existingJob.company}!`,
+              existing: {
+                id: existingJob._id,
+                position: existingJob.position,
+                company: existingJob.company,
+                status: existingJob.status,
+                dateApplied: existingJob.dateApplied
+              }
+            });
+            
+          case 'Applied':
+          case 'OA':
+          case 'Behavioral Interview':
+          case 'Technical Interview':
+          case 'Final Interview':
+          case 'No Response':
+          default:
+            // Update the existing entry with new data
+            console.log('🔄 Updating existing job entry');
+            
+            // Update fields (preserve some original data)
+            existingJob.company = applicationData.company || existingJob.company;
+            existingJob.position = applicationData.position || existingJob.position;
+            existingJob.location = applicationData.location || existingJob.location;
+            existingJob.salary = applicationData.salary || existingJob.salary;
+            existingJob.jobUrl = applicationData.jobUrl || existingJob.jobUrl;
+            existingJob.jobType = applicationData.jobType || existingJob.jobType;
+            existingJob.experienceLevel = applicationData.experienceLevel || existingJob.experienceLevel;
+            existingJob.workArrangement = applicationData.workArrangement || existingJob.workArrangement;
+            existingJob.technicalDetails = applicationData.technicalDetails || existingJob.technicalDetails;
+            
+            // Optionally update these fields
+            if (applicationData.notes) existingJob.notes = applicationData.notes;
+            if (applicationData.priority) existingJob.priority = applicationData.priority;
+            
+            // Update timestamp
+            existingJob.lastStatusUpdate = new Date();
+            
+            await existingJob.save();
+            
+            console.log('✅ Job updated successfully');
+            return res.json({
+              success: true,
+              isUpdate: true,
+              message: 'Job application updated successfully',
+              data: existingJob
+            });
+        }
+      }
+    }
+
+    // ============================================
+    // NO DUPLICATE - CREATE NEW JOB
+    // ============================================
+    console.log('✨ No duplicate found - Creating new job');
     const application = new JobApplication(applicationData);
     await application.save();
-    res.status(201).json({ success:true, message:'Application created successfully', data:application });
+    
+    console.log('✅ New job created:', application._id);
+    res.status(201).json({ 
+      success:true, 
+      isUpdate: false,
+      message:'Application created successfully', 
+      data:application 
+    });
+    
   }catch(error){
     console.error('❌ Error creating application:', error);
+    
+    // Handle duplicate key error (MongoDB unique index violation)
+    if (error.code === 11000) {
+      console.log('⚠️ Duplicate key error caught by database index');
+      return res.status(409).json({
+        success: false,
+        isDuplicate: true,
+        message: 'This job has already been saved to your tracker',
+        error: 'Duplicate entry'
+      });
+    }
+    
     if (error.name === 'ValidationError'){
       const errors = Object.values(error.errors).map(e=>e.message);
       return res.status(400).json({ success:false, message:'Validation error', errors });
     }
+    
     res.status(500).json({ success:false, message:'Error creating application', error:error.message });
   }
 });
@@ -163,7 +291,8 @@ app.put('/api/applications/:id', validateUserId, async (req,res)=>{
     // Only update if user owns this application
     const application = await JobApplication.findOneAndUpdate(
       { _id:req.params.id, userId:req.userId }, // Security: ensure user owns this
-      req.body, { new:true, runValidators:true }
+      { ...req.body, lastStatusUpdate: new Date() },
+      { new:true, runValidators:true }
     );
     if (!application) return res.status(404).json({ success:false, message:'Application not found or you do not have permission to update it' });
     res.json({ success:true, message:'Application updated successfully', data:application });
@@ -225,7 +354,7 @@ app.get('/api/stats', validateUserId, async (req,res)=>{
 });
 
 // POST /api/upload/csv - Upload and parse CSV file
-app.post('/api/upload/csv', upload.single('csvFile'), async (req,res)=>{
+app.post('/api/upload/csv', validateUserId, upload.single('csvFile'), async (req,res)=>{
   try{
     if (!req.file) return res.status(400).json({ success:false, message:'No CSV file uploaded' });
     console.log('📁 Processing CSV upload:', req.file.filename);
@@ -237,11 +366,13 @@ app.post('/api/upload/csv', upload.single('csvFile'), async (req,res)=>{
       .on('data',(data)=>{
         // Map CSV columns to our schema - flexible column naming
         const application={
+          userId: req.userId, // Use the validated userId
           company:data.Company||data.company||data.COMPANY,
           position:data.Position||data.position||data.POSITION,
           location:data.Location||data.location||data.LOCATION,
           salary:data.Salary||data.salary||data.SALARY,
           jobUrl:data['Job URL']||data.jobUrl||data.url||data.URL,
+          linkedinJobId: data['LinkedIn Job ID']||data.linkedinJobId||data['Job ID']||null,
           status:data.Status||data.status||data.STATUS||'Applied',
           dateApplied: data['Date Applied']||data.dateApplied||data.date ? new Date(data['Date Applied']||data.dateApplied||data.date) : new Date(),
           followUpDate: data['Follow Up Date']||data.followUpDate ? new Date(data['Follow Up Date']||data.followUpDate) : null,
@@ -256,31 +387,69 @@ app.post('/api/upload/csv', upload.single('csvFile'), async (req,res)=>{
       .on('end', async ()=>{
         try{
           console.log(`📊 Parsed ${results.length} applications from CSV`);
-          let created=0, updated=0, errors=0;
+          let created=0, updated=0, skipped=0, errors=0;
 
           // Process each application
           for (const appData of results){
             try{
-              // Check if application already exists (same company + position)
-              const existing = await JobApplication.findOne({
-                company:{ $regex:new RegExp(appData.company,'i') },
-                position:{ $regex:new RegExp(appData.position,'i') }
-              });
+              // Check for duplicate by linkedinJobId first (if available)
+              let existing = null;
+              
+              if (appData.linkedinJobId) {
+                existing = await JobApplication.findOne({
+                  userId: req.userId,
+                  linkedinJobId: appData.linkedinJobId
+                });
+              }
+              
+              // Fallback: check by company + position if no linkedinJobId match
+              if (!existing) {
+                existing = await JobApplication.findOne({
+                  userId: req.userId,
+                  company:{ $regex:new RegExp(appData.company,'i') },
+                  position:{ $regex:new RegExp(appData.position,'i') }
+                });
+              }
+              
               if (existing){
+                // Skip if status is Rejected or Offer
+                if (existing.status === 'Rejected' || existing.status === 'Offer') {
+                  console.log(`⏭️ Skipping ${appData.position} at ${appData.company} - Status: ${existing.status}`);
+                  skipped++;
+                  continue;
+                }
+                
                 // Update existing application
-                await JobApplication.findByIdAndUpdate(existing._id,{ ...appData, lastStatusUpdate:new Date() });
+                await JobApplication.findByIdAndUpdate(existing._id,{ 
+                  ...appData, 
+                  lastStatusUpdate:new Date() 
+                });
                 updated++;
               } else {
                 // Create new application
                 const newApp = new JobApplication({ ...appData, lastStatusUpdate:new Date() });
-                await newApp.save(); created++;
+                await newApp.save(); 
+                created++;
               }
-            }catch(err){ console.error('Error processing application:', err); errors++; }
+            }catch(err){ 
+              console.error('Error processing application:', err); 
+              errors++; 
+            }
           }
 
           // Clean up uploaded file
           fs.unlinkSync(filePath);
-          res.json({ success:true, message:'CSV processed successfully', stats:{ totalProcessed:results.length, created, updated, errors } });
+          res.json({ 
+            success:true, 
+            message:'CSV processed successfully', 
+            stats:{ 
+              totalProcessed:results.length, 
+              created, 
+              updated, 
+              skipped,
+              errors 
+            } 
+          });
         }catch(error){
           console.error('❌ Error saving applications:', error);
           fs.unlinkSync(filePath);
@@ -309,6 +478,7 @@ const connectDB = async ()=>{
     }
     await mongoose.connect(process.env.MONGODB_URI);
     console.log('✅ MongoDB connected successfully');
+    console.log('✅ Duplicate prevention index active');
   }catch(error){
     console.error('❌ MongoDB connection error:', error.message);
     console.error('Error details:', error);
@@ -320,9 +490,10 @@ const startServer = async ()=>{
   await connectDB();
   app.listen(PORT, ()=> {
     console.log('🚀========================================🚀');
-    console.log(`✅ Job Tracker API is running on port ${PORT}`);
+    console.log(`✅ Job Tracker API v1.1.0 is running on port ${PORT}`);
     console.log(`🌐 Base URL: ${PUBLIC_URL}`);
     console.log(`🏥 Health check: ${PUBLIC_URL.replace(/\/$/, '')}/api/health`);
+    console.log('🔒 Duplicate detection: ENABLED');
     console.log('🚀========================================🚀');
   });
 };
