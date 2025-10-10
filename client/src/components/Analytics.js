@@ -45,6 +45,8 @@ const AXIS_METRIC_LIMITS = {
   responseTime: ['count'],
 };
 
+const MS_PER_DAY = 1000 * 60 * 60 * 24;
+
 const mapStatus = (status) => {
   if (!status) return 'Unknown';
   return INTERVIEW_STATUSES.has(status) ? 'Interview' : status;
@@ -253,8 +255,8 @@ const groupJobsByAxis = (jobs, axis) => {
       const groups = new Map();
       jobs.forEach(job => {
         if (!job.dateApplied) return;
-        const key = new Date(job.dateApplied);
-        key.setHours(0, 0, 0, 0);
+        const d = new Date(job.dateApplied);
+        const key = new Date(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
         const label = formatDayLabel(key);
         if (!groups.has(key.getTime())) {
           groups.set(key.getTime(), { label, jobs: [] });
@@ -422,6 +424,16 @@ const computeSummaryMetrics = (jobs) => {
   ];
 };
 
+const getStartOfDay = (value) => {
+  const d = new Date(value);
+  return new Date(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+};
+
+const getStartOfMonth = (value) => {
+  const date = new Date(value);
+  return new Date(date.getFullYear(), date.getMonth(), 1);
+};
+
 const computeTimingMetrics = (jobs) => {
   const respondedTimes = jobs
     .map(getResponseDays)
@@ -438,24 +450,26 @@ const computeTimingMetrics = (jobs) => {
     : null;
 
   const datedJobs = jobs.filter(job => job.dateApplied);
-  const perWeek = (() => {
+  const thisWeekCount = (() => {
     if (datedJobs.length === 0) return null;
-    const timestamps = datedJobs.map(job => new Date(job.dateApplied).getTime());
-    const min = Math.min(...timestamps);
-    const max = Math.max(...timestamps);
-    const spanDays = Math.max(1, (max - min) / (1000 * 60 * 60 * 24) + 1);
-    const weeks = spanDays / 7;
-    return weeks ? datedJobs.length / weeks : null;
+    const today = new Date();
+    const weekStart = getWeekStart(today);
+    const weekEnd = new Date(weekStart.getTime() + 7 * MS_PER_DAY);
+    return datedJobs.filter(job => {
+      const applied = getStartOfDay(job.dateApplied);
+      return applied >= weekStart && applied < weekEnd;
+    }).length;
   })();
 
-  const perMonth = (() => {
+  const thisMonthCount = (() => {
     if (datedJobs.length === 0) return null;
-    const timestamps = datedJobs.map(job => new Date(job.dateApplied).getTime());
-    const min = Math.min(...timestamps);
-    const max = Math.max(...timestamps);
-    const spanDays = Math.max(1, (max - min) / (1000 * 60 * 60 * 24) + 1);
-    const months = spanDays / 30.4375;
-    return months ? datedJobs.length / months : null;
+    const today = new Date();
+    const monthStart = getStartOfMonth(today);
+    const nextMonthStart = new Date(monthStart.getFullYear(), monthStart.getMonth() + 1, 1);
+    return datedJobs.filter(job => {
+      const applied = getStartOfDay(job.dateApplied);
+      return applied >= monthStart && applied < nextMonthStart;
+    }).length;
   })();
 
   const responseDistributionGroups = groupJobsByAxis(jobs, 'responseTime');
@@ -473,10 +487,10 @@ const computeTimingMetrics = (jobs) => {
       value: averageOffer !== null ? `${averageOffer.toFixed(1)} days` : 'Not enough data',
     },
     {
-      label: 'Applications per Week/Month',
-      description: 'Frequency trend over time',
-      value: perWeek && perMonth
-        ? `${perWeek.toFixed(1)}/week • ${perMonth.toFixed(1)}/month`
+      label: 'Applications this Week/Month',
+      description: 'Submissions during the current calendar week and month',
+      value: thisWeekCount !== null && thisMonthCount !== null
+        ? `${thisWeekCount.toLocaleString()} this week • ${thisMonthCount.toLocaleString()} this month`
         : 'Not enough data',
     },
     {
@@ -539,6 +553,26 @@ const Analytics = ({ jobs, stats, filteredJobs = [], activeFilter, searchTerm })
 
   const statusPieData = useMemo(() => buildStatusWorkStyleData(scopedJobs), [scopedJobs]);
   const applicationsPerDay = useMemo(() => buildApplicationsPerDaySeries(scopedJobs), [scopedJobs]);
+  const dailyTrendSummary = useMemo(() => {
+    const dated = scopedJobs
+      .filter(job => job.dateApplied)
+      .map(job => getStartOfDay(job.dateApplied).getTime());
+    if (dated.length === 0) return null;
+
+    const uniqueDates = Array.from(new Set(dated)).sort((a, b) => a - b);
+    if (uniqueDates.length === 0) return null;
+
+    const first = uniqueDates[0];
+    const last = uniqueDates[uniqueDates.length - 1];
+    const spanDays = Math.round((last - first) / MS_PER_DAY) + 1;
+
+    return {
+      uniqueCount: uniqueDates.length,
+      spanDays,
+      startLabel: formatDayLabel(first),
+      endLabel: formatDayLabel(last),
+    };
+  }, [scopedJobs]);
 
   const summaryMetrics = useMemo(() => computeSummaryMetrics(scopedJobs), [scopedJobs]);
   const timingMetrics = useMemo(() => computeTimingMetrics(scopedJobs), [scopedJobs]);
@@ -643,12 +677,20 @@ const Analytics = ({ jobs, stats, filteredJobs = [], activeFilter, searchTerm })
                 No dated applications yet.
               </div>
             ) : (
-              <div style={styles.lineChart}>
-                <LineChart
-                  data={applicationsPerDay}
-                  valueFormatter={(value) => formatValueForDisplay('count', value)}
-                />
-              </div>
+              <>
+                <div style={styles.lineChart}>
+                  <LineChart
+                    data={applicationsPerDay}
+                    valueFormatter={(value) => formatValueForDisplay('count', value)}
+                  />
+                </div>
+                {dailyTrendSummary && (
+                  <p style={styles.chartContextText}>
+                    Showing {dailyTrendSummary.uniqueCount.toLocaleString()} submission day{dailyTrendSummary.uniqueCount !== 1 ? 's' : ''}
+                    {' '}between {dailyTrendSummary.startLabel} and {dailyTrendSummary.endLabel}. Days without applications are omitted, so the line spans {dailyTrendSummary.spanDays.toLocaleString()} calendar day{dailyTrendSummary.spanDays !== 1 ? 's' : ''} even if only a few points appear.
+                  </p>
+                )}
+              </>
             )}
           </div>
 
@@ -1158,6 +1200,12 @@ const styles = {
   },
   lineChart: {
     overflowX: 'auto',
+  },
+  chartContextText: {
+    marginTop: '12px',
+    fontSize: '13px',
+    color: '#475569',
+    lineHeight: 1.5,
   },
   pieContainer: {
     display: 'flex',

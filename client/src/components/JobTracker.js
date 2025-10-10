@@ -3,6 +3,14 @@ import Analytics from './Analytics';
 
 const API_URL = 'https://jobtracker-production-2ed3.up.railway.app/api';
 
+const formatDateUTC = (value) => {
+  const d = new Date(value);
+  const y = d.getUTCFullYear();
+  const m = String(d.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(d.getUTCDate()).padStart(2, '0');
+  return `${y}/${m}/${day}`;
+};
+
 const isCollectionJob = (job) => {
   if (!job) return false;
   if (job.isCollection || job.collection || job.isCollected) return true;
@@ -740,7 +748,7 @@ const JobCard = ({ job, onClick, onToggleStar }) => {
 
       <div style={styles.jobMeta}>
         <span style={styles.jobDate}>
-          📅 Applied: {new Date(job.dateApplied).toLocaleDateString()}
+          📅 Applied: {job.dateApplied ? formatDateUTC(job.dateApplied) : 'Not tracked'}
         </span>
       </div>
 
@@ -912,7 +920,7 @@ const JobDetailModal = ({ job, onClose, onUpdateStatus, onDelete, onSave, onTogg
                   {job.salary && job.salary !== 'Not specified' && (
                     <div style={styles.detailRow}><strong>Salary:</strong> {job.salary}</div>
                   )}
-                  <div style={styles.detailRow}><strong>Date Applied:</strong> {job.dateApplied ? new Date(job.dateApplied).toLocaleDateString() : 'Not tracked'}</div>
+                  <div style={styles.detailRow}><strong>Date Applied:</strong> <strong>Date Applied:</strong> {job.dateApplied ? formatDateUTC(job.dateApplied) : 'Not tracked'}</div>
                 </div>
                 <div style={styles.detailColumn}>
                   <div style={styles.detailRow}><strong>Job Type:</strong> {job.jobType || 'Not specified'}</div>
