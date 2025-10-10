@@ -1,31 +1,7 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import Analytics from './Analytics';
 
 const API_URL = 'https://jobtracker-production-2ed3.up.railway.app/api';
-
-const isCollectionJob = (job) => {
-  if (!job) return false;
-  if (job.isCollection || job.collection || job.isCollected) return true;
-  const priority = (job.priority || '').toLowerCase();
-  return priority === 'high' || priority === 'dream job' || priority === 'collection' || priority === 'favorite';
-};
-
-const parseSkills = (technicalDetails) => {
-  if (!technicalDetails) return [];
-
-  const rawTokens = Array.isArray(technicalDetails)
-    ? technicalDetails
-    : technicalDetails.split(/[,;\n]+/);
-
-  return rawTokens
-    .map(token => token
-      .replace(/[_-]+/g, ' ')
-      .replace(/\s+/g, ' ')
-      .trim()
-    )
-    .filter(token => token && token.length < 40 && !/\d{6,}/.test(token))
-    .map(token => token.replace(/\b([a-z])/gi, (match) => match.toUpperCase()));
-};
 
 const JobTracker = () => {
   // State management
@@ -41,28 +17,105 @@ const JobTracker = () => {
   const [sortBy, setSortBy] = useState('dateApplied');
   const [sortOrder, setSortOrder] = useState('desc');
   const [activeTab, setActiveTab] = useState('dashboard');
-  const [collectionFilter, setCollectionFilter] = useState('all');
-
+  
   // Auto "No Response" settings
-  const [noResponseDays, setNoResponseDays] = useState(21);
+  const [noResponseDays, setNoResponseDays] = useState(30);
   const [showSettings, setShowSettings] = useState(false);
+
+  // Check localStorage for saved userId and settings
+  useEffect(() => {
+    const savedUserId = localStorage.getItem('jobTrackerUserId');
+    const savedDays = localStorage.getItem('noResponseDays');
+    
+    if (savedUserId) {
+      setUserId(savedUserId);
+      handleLogin(savedUserId);
+    }
+    
+    if (savedDays) {
+      setNoResponseDays(parseInt(savedDays));
+    }
+  }, []);
 
   // Save noResponseDays to localStorage when changed
   useEffect(() => {
     localStorage.setItem('noResponseDays', noResponseDays.toString());
   }, [noResponseDays]);
 
+  // Login/Authentication
+  const handleLogin = async (userIdToUse) => {
+    const id = userIdToUse || userId;
+    if (!id.trim()) {
+      setError('Please enter your User ID');
+      return;
+    }
+
+    setLoading(true);
+    setError('');
+
+    try {
+      const response = await fetch(`${API_URL}/stats`, {
+        headers: { 'x-user-id': id }
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        if (result.success) {
+          localStorage.setItem('jobTrackerUserId', id);
+          setIsAuthenticated(true);
+          await fetchData(id);
+        } else {
+          setError('Invalid User ID');
+        }
+      } else {
+        setError('Invalid User ID or connection error');
+      }
+    } catch (err) {
+      setError('Could not connect to server');
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fetch all data
+  const fetchData = async (id) => {
+    setLoading(true);
+    try {
+      // Fetch stats
+      const statsRes = await fetch(`${API_URL}/stats`, {
+        headers: { 'x-user-id': id }
+      });
+      const statsData = await statsRes.json();
+      if (statsData.success) setStats(statsData.data);
+
+      // Fetch jobs
+      const jobsRes = await fetch(`${API_URL}/applications`, {
+        headers: { 'x-user-id': id }
+      });
+      const jobsData = await jobsRes.json();
+      if (jobsData.success) {
+        const updatedJobs = await autoUpdateNoResponse(jobsData.data, id);
+        setJobs(updatedJobs);
+      }
+    } catch (err) {
+      console.error('Error fetching data:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Auto-update jobs to "No Response" if past threshold
-  const autoUpdateNoResponse = async (jobsList, id, daysThreshold) => {
+  const autoUpdateNoResponse = async (jobsList, id) => {
     const now = new Date();
     const updatedJobs = [];
-
+    
     for (const job of jobsList) {
       if (job.status === 'Applied') {
         const appliedDate = new Date(job.dateApplied);
         const daysSinceApplied = Math.floor((now - appliedDate) / (1000 * 60 * 60 * 24));
-
-        if (daysSinceApplied >= daysThreshold) {
+        
+        if (daysSinceApplied >= noResponseDays) {
           try {
             await fetch(`${API_URL}/applications/${job._id}`, {
               method: 'PUT',
@@ -84,93 +137,9 @@ const JobTracker = () => {
         updatedJobs.push(job);
       }
     }
-
+    
     return updatedJobs;
   };
-
-  // Fetch all data
-  const fetchData = useCallback(async (id) => {
-    setLoading(true);
-    try {
-      // Fetch stats
-      const statsRes = await fetch(`${API_URL}/stats`, {
-        headers: { 'x-user-id': id }
-      });
-      const statsData = await statsRes.json();
-      if (statsData.success) setStats(statsData.data);
-
-      // Fetch jobs
-      const jobsRes = await fetch(`${API_URL}/applications`, {
-        headers: { 'x-user-id': id }
-      });
-      const jobsData = await jobsRes.json();
-      if (jobsData.success) {
-        const updatedJobs = await autoUpdateNoResponse(jobsData.data, id, noResponseDays);
-        setJobs(updatedJobs);
-      }
-    } catch (err) {
-      console.error('Error fetching data:', err);
-    } finally {
-      setLoading(false);
-    }
-  }, [noResponseDays]);
-
-  // Login/Authentication
-  const performLogin = useCallback(async (rawId) => {
-    const trimmedId = (rawId || '').trim();
-    if (!trimmedId) {
-      setError('Please enter your User ID');
-      return;
-    }
-
-    setUserId(trimmedId);
-    setLoading(true);
-    setError('');
-
-    try {
-      const response = await fetch(`${API_URL}/stats`, {
-        headers: { 'x-user-id': trimmedId }
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        if (result.success) {
-          localStorage.setItem('jobTrackerUserId', trimmedId);
-          setIsAuthenticated(true);
-          await fetchData(trimmedId);
-        } else {
-          setError('Invalid User ID');
-        }
-      } else {
-        setError('Invalid User ID or connection error');
-      }
-    } catch (err) {
-      setError('Could not connect to server');
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  }, [fetchData]);
-
-  const handleLogin = (userIdToUse) => {
-    performLogin(userIdToUse || userId);
-  };
-
-  // Check localStorage for saved userId and settings
-  useEffect(() => {
-    const savedUserId = localStorage.getItem('jobTrackerUserId');
-    const savedDays = localStorage.getItem('noResponseDays');
-
-    if (savedUserId && !isAuthenticated) {
-      setUserId(savedUserId);
-      performLogin(savedUserId);
-    }
-
-    if (savedDays) {
-      const parsed = parseInt(savedDays, 10);
-      setNoResponseDays(Number.isNaN(parsed) ? 21 : parsed);
-    }
-  }, [performLogin, isAuthenticated]);
 
   // Logout
   const handleLogout = () => {
@@ -194,13 +163,8 @@ const JobTracker = () => {
       });
 
       if (response.ok) {
-        const result = await response.json();
         await fetchData(userId);
-        if (result?.data) {
-          setSelectedJob(result.data);
-        } else {
-          setSelectedJob(prev => (prev && prev._id === jobId ? { ...prev, status: newStatus } : prev));
-        }
+        setSelectedJob(null);
       }
     } catch (err) {
       console.error('Error updating job:', err);
@@ -254,81 +218,36 @@ const JobTracker = () => {
     }
   };
 
-  const handleSaveJobDetails = async (jobId, updates, onSuccess) => {
-    try {
-      const response = await fetch(`${API_URL}/applications/${jobId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-user-id': userId
-        },
-        body: JSON.stringify(updates)
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        await fetchData(userId);
-        if (result?.data) {
-          setSelectedJob(result.data);
-        } else {
-          setSelectedJob(prev => (prev && prev._id === jobId ? { ...prev, ...updates } : prev));
-        }
-        if (typeof onSuccess === 'function') {
-          onSuccess();
-        }
-      }
-    } catch (err) {
-      console.error('Error updating job:', err);
-    }
-  };
-
-  const searchLower = searchTerm.toLowerCase();
-
   // Enhanced filter - search company, position, location, AND keywords
   const filteredJobs = jobs
     .filter(job => {
       const matchesStatus = filterStatus === 'All' || job.status === filterStatus;
-      const matchesSearch =
+      
+      const searchLower = searchTerm.toLowerCase();
+      const matchesSearch = 
         job.company.toLowerCase().includes(searchLower) ||
         job.position.toLowerCase().includes(searchLower) ||
         (job.location && job.location.toLowerCase().includes(searchLower)) ||
-        (job.technicalDetails && job.technicalDetails.some(tech =>
+        (job.technicalDetails && job.technicalDetails.some(tech => 
           tech.toLowerCase().includes(searchLower)
         ));
-
-      const matchesCollection =
-        collectionFilter === 'all' ||
-        (collectionFilter === 'favorites' && isCollectionJob(job)) ||
-        (collectionFilter === 'nonFavorites' && !isCollectionJob(job));
-
-      return matchesStatus && matchesSearch && matchesCollection;
+      
+      return matchesStatus && matchesSearch;
     })
     .sort((a, b) => {
-      if (collectionFilter !== 'nonFavorites') {
-        const aFav = isCollectionJob(a) ? 1 : 0;
-        const bFav = isCollectionJob(b) ? 1 : 0;
-        if (aFav !== bFav) {
-          return bFav - aFav;
-        }
-      }
-
       let aVal = a[sortBy];
       let bVal = b[sortBy];
-
+      
       if (sortBy === 'dateApplied' || sortBy === 'createdAt') {
-        aVal = aVal ? new Date(aVal).getTime() : 0;
-        bVal = bVal ? new Date(bVal).getTime() : 0;
-      } else {
-        aVal = (aVal || '').toString().toLowerCase();
-        bVal = (bVal || '').toString().toLowerCase();
+        aVal = new Date(aVal);
+        bVal = new Date(bVal);
       }
-
-      if (aVal === bVal) return 0;
-
+      
       if (sortOrder === 'asc') {
         return aVal > bVal ? 1 : -1;
+      } else {
+        return aVal < bVal ? 1 : -1;
       }
-      return aVal < bVal ? 1 : -1;
     });
 
   // Login Screen
@@ -336,8 +255,8 @@ const JobTracker = () => {
     return (
       <div style={styles.loginContainer}>
         <div style={styles.loginBox}>
-          <h1 style={styles.loginTitle}>👋 Welcome back</h1>
-          <p style={styles.loginSubtitle}>Enter your User ID to access your saved applications.</p>
+          <h1 style={styles.loginTitle}>🎯 Job Tracker</h1>
+          <p style={styles.loginSubtitle}>Track your job applications with ease</p>
           
           <div style={styles.loginForm}>
             <label style={styles.label}>User ID</label>
@@ -346,7 +265,7 @@ const JobTracker = () => {
               value={userId}
               onChange={(e) => setUserId(e.target.value)}
               onKeyPress={(e) => e.key === 'Enter' && handleLogin()}
-              placeholder="Enter your User ID"
+              placeholder="job-tracker_yourname"
               style={styles.input}
             />
             
@@ -390,9 +309,9 @@ const JobTracker = () => {
 
             <div style={styles.headerActions}>
               <button
-                onClick={() => setShowSettings(true)}
+                onClick={() => setShowSettings(!showSettings)}
                 style={styles.settingsBtn}
-                title="Open settings"
+                title="Toggle settings"
               >
                 ⚙️ Settings
               </button>
@@ -433,6 +352,31 @@ const JobTracker = () => {
           </div>
         </div>
 
+        {/* Settings Panel */}
+        {showSettings && (
+          <div style={styles.settingsPanel}>
+            <h3 style={styles.settingsTitle}>⚙️ Settings</h3>
+            <div style={styles.settingRow}>
+              <label style={styles.settingLabel}>
+                Auto "No Response" after:
+              </label>
+              <div style={styles.settingControl}>
+                <input
+                  type="number"
+                  min="1"
+                  max="365"
+                  value={noResponseDays}
+                  onChange={(e) => setNoResponseDays(parseInt(e.target.value))}
+                  style={styles.settingInput}
+                />
+                <span style={styles.settingUnit}>days</span>
+              </div>
+            </div>
+            <p style={styles.settingHint}>
+              Jobs with "Applied" status will automatically change to "No Response" after {noResponseDays} days
+            </p>
+          </div>
+        )}
       </header>
 
       {/* Conditional Rendering Based on Active Tab */}
@@ -515,36 +459,12 @@ const JobTracker = () => {
                 {sortOrder === 'asc' ? '⬆️' : '⬇️'}
               </button>
 
-              <button
+              <button 
                 onClick={() => fetchData(userId)}
                 style={styles.refreshButton}
               >
                 🔄 Refresh
               </button>
-              <div style={styles.collectionToggles}>
-                <label style={styles.checkboxLabel}>
-                  <input
-                    type="checkbox"
-                    checked={collectionFilter === 'favorites'}
-                    onChange={() =>
-                      setCollectionFilter(collectionFilter === 'favorites' ? 'all' : 'favorites')
-                    }
-                    style={styles.checkboxInput}
-                  />
-                  <span>Only collections</span>
-                </label>
-                <label style={styles.checkboxLabel}>
-                  <input
-                    type="checkbox"
-                    checked={collectionFilter === 'nonFavorites'}
-                    onChange={() =>
-                      setCollectionFilter(collectionFilter === 'nonFavorites' ? 'all' : 'nonFavorites')
-                    }
-                    style={styles.checkboxInput}
-                  />
-                  <span>Only non-collection</span>
-                </label>
-              </div>
             </div>
           </div>
 
@@ -566,12 +486,11 @@ const JobTracker = () => {
             ) : (
               <div style={styles.jobsGrid}>
                 {filteredJobs.map(job => (
-                  <JobCard
-                    key={job._id}
-                    job={job}
+                  <JobCard 
+                    key={job._id} 
+                    job={job} 
                     onClick={() => setSelectedJob(job)}
                     onToggleStar={(e) => toggleStar(job, e)}
-                    inCollection={isCollectionJob(job)}
                   />
                 ))}
               </div>
@@ -590,25 +509,11 @@ const JobTracker = () => {
 
       {/* Job Detail Modal */}
       {selectedJob && (
-        <JobDetailModal
+        <JobDetailModal 
           job={selectedJob}
           onClose={() => setSelectedJob(null)}
           onUpdateStatus={updateJobStatus}
           onDelete={deleteJob}
-          onSave={handleSaveJobDetails}
-        />
-      )}
-
-      {showSettings && (
-        <SettingsModal
-          noResponseDays={noResponseDays}
-          onClose={() => setShowSettings(false)}
-          onChangeDays={(value) => {
-            const parsed = parseInt(value, 10);
-            if (!Number.isNaN(parsed) && parsed > 0) {
-              setNoResponseDays(Math.min(parsed, 365));
-            }
-          }}
         />
       )}
     </div>
@@ -627,7 +532,7 @@ const StatCard = ({ title, value, color, icon }) => (
 );
 
 // NEW: JobCard with Star Button
-const JobCard = ({ job, onClick, onToggleStar, inCollection }) => {
+const JobCard = ({ job, onClick, onToggleStar }) => {
   const statusColors = {
     'Applied': '#3b82f6',
     'OA': '#f59e0b',
@@ -640,14 +545,12 @@ const JobCard = ({ job, onClick, onToggleStar, inCollection }) => {
   };
 
   const isStarred = job.priority === 'High' || job.priority === 'Dream Job';
-  const displaySkills = parseSkills(job.technicalDetails);
 
   return (
     <div style={styles.jobCard} onClick={onClick}>
       <div style={styles.jobCardHeader}>
         <h3 style={styles.jobTitle}>{job.position}</h3>
         <div style={styles.cardActions}>
-          {inCollection && <span style={styles.collectionBadge}>📁 Collection</span>}
           <button
             onClick={onToggleStar}
             style={{
@@ -683,13 +586,13 @@ const JobCard = ({ job, onClick, onToggleStar, inCollection }) => {
         </span>
       </div>
 
-      {displaySkills.length > 0 && (
+      {job.technicalDetails && job.technicalDetails.length > 0 && (
         <div style={styles.tags}>
-          {displaySkills.slice(0, 3).map((tech, idx) => (
+          {job.technicalDetails.slice(0, 3).map((tech, idx) => (
             <span key={idx} style={styles.tag}>{tech}</span>
           ))}
-          {displaySkills.length > 3 && (
-            <span style={styles.tag}>+{displaySkills.length - 3}</span>
+          {job.technicalDetails.length > 3 && (
+            <span style={styles.tag}>+{job.technicalDetails.length - 3}</span>
           )}
         </div>
       )}
@@ -697,126 +600,8 @@ const JobCard = ({ job, onClick, onToggleStar, inCollection }) => {
   );
 };
 
-const SettingsModal = ({ noResponseDays, onClose, onChangeDays }) => {
-  const [value, setValue] = useState(noResponseDays);
-
-  useEffect(() => {
-    setValue(noResponseDays);
-  }, [noResponseDays]);
-
-  return (
-    <div style={styles.modalOverlay} onClick={onClose}>
-      <div style={styles.settingsModal} onClick={(e) => e.stopPropagation()}>
-        <div style={styles.modalHeader}>
-          <h3 style={styles.modalTitle}>⚙️ Settings</h3>
-          <button onClick={onClose} style={styles.closeButton}>✕</button>
-        </div>
-        <div style={styles.modalBody}>
-          <p style={styles.settingHint}>
-            Automatically move jobs without responses to <strong>No Response</strong> after the selected number of days.
-          </p>
-          <div style={styles.settingRow}>
-            <label style={styles.settingLabel}>Auto "No Response" after</label>
-            <div style={styles.settingControl}>
-              <input
-                type="number"
-                min="1"
-                max="365"
-                value={value}
-                onChange={(e) => setValue(e.target.value)}
-                onBlur={() => onChangeDays(value)}
-                style={styles.settingInput}
-              />
-              <span style={styles.settingUnit}>days</span>
-            </div>
-          </div>
-          <div style={styles.settingActions}>
-            <button
-              onClick={() => {
-                setValue(21);
-                onChangeDays(21);
-              }}
-              style={styles.resetButton}
-            >
-              Reset to 21 days
-            </button>
-            <button
-              onClick={() => {
-                onChangeDays(value);
-                onClose();
-              }}
-              style={styles.updateButton}
-            >
-              Done
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-const JobDetailModal = ({ job, onClose, onUpdateStatus, onDelete, onSave }) => {
-  const buildFormState = (currentJob) => ({
-    position: currentJob.position || '',
-    company: currentJob.company || '',
-    location: currentJob.location || '',
-    salary: currentJob.salary || '',
-    jobType: currentJob.jobType || '',
-    experienceLevel: currentJob.experienceLevel || '',
-    workArrangement: currentJob.workArrangement || '',
-    dateApplied: currentJob.dateApplied ? new Date(currentJob.dateApplied).toISOString().slice(0, 10) : '',
-    priority: currentJob.priority || 'Medium',
-    status: currentJob.status || 'Applied',
-    jobUrl: currentJob.jobUrl || '',
-    notes: currentJob.notes || '',
-    technicalDetails: Array.isArray(currentJob.technicalDetails)
-      ? currentJob.technicalDetails.join(', ')
-      : (currentJob.technicalDetails || '')
-  });
-
-  const [isEditing, setIsEditing] = useState(false);
-  const [formState, setFormState] = useState(buildFormState(job));
-
-  useEffect(() => {
-    setFormState(buildFormState(job));
-    setIsEditing(false);
-  }, [job]);
-
-  const displaySkills = parseSkills(job.technicalDetails);
-
-  const handleChange = (field, value) => {
-    setFormState(prev => ({ ...prev, [field]: value }));
-  };
-
-  const handleSave = () => {
-    const payload = {
-      position: formState.position.trim(),
-      company: formState.company.trim(),
-      location: formState.location.trim(),
-      salary: formState.salary.trim(),
-      jobType: formState.jobType.trim(),
-      experienceLevel: formState.experienceLevel.trim(),
-      workArrangement: formState.workArrangement.trim(),
-      priority: formState.priority,
-      status: formState.status,
-      jobUrl: formState.jobUrl.trim(),
-      notes: formState.notes,
-      technicalDetails: formState.technicalDetails
-        ? formState.technicalDetails.split(/[,;\n]+/).map(item => item.trim()).filter(Boolean)
-        : [],
-    };
-
-    if (formState.dateApplied) {
-      payload.dateApplied = new Date(formState.dateApplied).toISOString();
-    }
-
-    onSave(job._id, payload, () => setIsEditing(false));
-  };
-
-  const resetForm = () => {
-    setFormState(buildFormState(job));
-  };
+const JobDetailModal = ({ job, onClose, onUpdateStatus, onDelete }) => {
+  const [newStatus, setNewStatus] = useState(job.status);
 
   return (
     <div style={styles.modalOverlay} onClick={onClose}>
@@ -827,235 +612,87 @@ const JobDetailModal = ({ job, onClose, onUpdateStatus, onDelete, onSave }) => {
         </div>
 
         <div style={styles.modalBody}>
-          {!isEditing ? (
-            <>
-              <div style={styles.detailGrid}>
-                <div style={styles.detailColumn}>
-                  <div style={styles.detailRow}><strong>Company:</strong> {job.company}</div>
-                  <div style={styles.detailRow}><strong>Location:</strong> {job.location || 'Not specified'}</div>
-                  {job.salary && job.salary !== 'Not specified' && (
-                    <div style={styles.detailRow}><strong>Salary:</strong> {job.salary}</div>
-                  )}
-                  <div style={styles.detailRow}><strong>Date Applied:</strong> {job.dateApplied ? new Date(job.dateApplied).toLocaleDateString() : 'Not tracked'}</div>
-                </div>
-                <div style={styles.detailColumn}>
-                  <div style={styles.detailRow}><strong>Job Type:</strong> {job.jobType || 'Not specified'}</div>
-                  <div style={styles.detailRow}><strong>Experience:</strong> {job.experienceLevel || 'Not specified'}</div>
-                  <div style={styles.detailRow}><strong>Work Mode:</strong> {job.workArrangement || 'Not specified'}</div>
-                  <div style={styles.detailRow}><strong>Priority:</strong> {job.priority || 'Medium'}</div>
-                </div>
-              </div>
-
-              {displaySkills.length > 0 && (
-                <div style={styles.detailRow}>
-                  <strong>Skills:</strong>
-                  <div style={styles.tags}>
-                    {displaySkills.map((tech, idx) => (
-                      <span key={idx} style={styles.tag}>{tech}</span>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {job.notes && (
-                <div style={styles.detailRow}>
-                  <strong>Notes:</strong>
-                  <p style={styles.notes}>{job.notes}</p>
-                </div>
-              )}
-
-              {job.jobUrl && (
-                <div style={styles.detailRow}>
-                  <a
-                    href={job.jobUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={styles.link}
-                  >
-                    🔗 View Job Posting
-                  </a>
-                </div>
-              )}
-
-              <div style={styles.statusUpdate}>
-                <label style={styles.label}>Quick Status Update:</label>
-                <div style={styles.inlineStatus}>
-                  <select
-                    value={job.status}
-                    onChange={(e) => onUpdateStatus(job._id, e.target.value)}
-                    style={styles.select}
-                  >
-                    <option value="Applied">Applied</option>
-                    <option value="OA">OA</option>
-                    <option value="Behavioral Interview">Behavioral Interview</option>
-                    <option value="Technical Interview">Technical Interview</option>
-                    <option value="Final Interview">Final Interview</option>
-                    <option value="Offer">Offer</option>
-                    <option value="Rejected">Rejected</option>
-                    <option value="No Response">No Response</option>
-                  </select>
-                  <button
-                    onClick={() => setIsEditing(true)}
-                    style={styles.editButton}
-                  >
-                    ✏️ Edit Details
-                  </button>
-                </div>
-              </div>
-            </>
-          ) : (
-            <>
-              <div style={styles.editGrid}>
-                <label style={styles.editField}>
-                  <span>Position</span>
-                  <input
-                    type="text"
-                    value={formState.position}
-                    onChange={(e) => handleChange('position', e.target.value)}
-                    style={styles.input}
-                  />
-                </label>
-                <label style={styles.editField}>
-                  <span>Company</span>
-                  <input
-                    type="text"
-                    value={formState.company}
-                    onChange={(e) => handleChange('company', e.target.value)}
-                    style={styles.input}
-                  />
-                </label>
-                <label style={styles.editField}>
-                  <span>Location</span>
-                  <input
-                    type="text"
-                    value={formState.location}
-                    onChange={(e) => handleChange('location', e.target.value)}
-                    style={styles.input}
-                  />
-                </label>
-                <label style={styles.editField}>
-                  <span>Salary</span>
-                  <input
-                    type="text"
-                    value={formState.salary}
-                    onChange={(e) => handleChange('salary', e.target.value)}
-                    style={styles.input}
-                  />
-                </label>
-                <label style={styles.editField}>
-                  <span>Job Type</span>
-                  <input
-                    type="text"
-                    value={formState.jobType}
-                    onChange={(e) => handleChange('jobType', e.target.value)}
-                    style={styles.input}
-                  />
-                </label>
-                <label style={styles.editField}>
-                  <span>Experience Level</span>
-                  <input
-                    type="text"
-                    value={formState.experienceLevel}
-                    onChange={(e) => handleChange('experienceLevel', e.target.value)}
-                    style={styles.input}
-                  />
-                </label>
-                <label style={styles.editField}>
-                  <span>Work Arrangement</span>
-                  <input
-                    type="text"
-                    value={formState.workArrangement}
-                    onChange={(e) => handleChange('workArrangement', e.target.value)}
-                    style={styles.input}
-                  />
-                </label>
-                <label style={styles.editField}>
-                  <span>Priority</span>
-                  <select
-                    value={formState.priority}
-                    onChange={(e) => handleChange('priority', e.target.value)}
-                    style={styles.select}
-                  >
-                    <option value="Low">Low</option>
-                    <option value="Medium">Medium</option>
-                    <option value="High">High</option>
-                    <option value="Dream Job">Dream Job</option>
-                  </select>
-                </label>
-                <label style={styles.editField}>
-                  <span>Status</span>
-                  <select
-                    value={formState.status}
-                    onChange={(e) => handleChange('status', e.target.value)}
-                    style={styles.select}
-                  >
-                    <option value="Applied">Applied</option>
-                    <option value="OA">OA</option>
-                    <option value="Behavioral Interview">Behavioral Interview</option>
-                    <option value="Technical Interview">Technical Interview</option>
-                    <option value="Final Interview">Final Interview</option>
-                    <option value="Offer">Offer</option>
-                    <option value="Rejected">Rejected</option>
-                    <option value="No Response">No Response</option>
-                  </select>
-                </label>
-                <label style={styles.editField}>
-                  <span>Date Applied</span>
-                  <input
-                    type="date"
-                    value={formState.dateApplied}
-                    onChange={(e) => handleChange('dateApplied', e.target.value)}
-                    style={styles.input}
-                  />
-                </label>
-                <label style={{ ...styles.editField, gridColumn: '1 / -1' }}>
-                  <span>Job Link</span>
-                  <input
-                    type="url"
-                    value={formState.jobUrl}
-                    onChange={(e) => handleChange('jobUrl', e.target.value)}
-                    style={styles.input}
-                  />
-                </label>
-                <label style={{ ...styles.editField, gridColumn: '1 / -1' }}>
-                  <span>Skills (comma separated)</span>
-                  <input
-                    type="text"
-                    value={formState.technicalDetails}
-                    onChange={(e) => handleChange('technicalDetails', e.target.value)}
-                    style={styles.input}
-                  />
-                </label>
-                <label style={{ ...styles.editField, gridColumn: '1 / -1' }}>
-                  <span>Notes</span>
-                  <textarea
-                    value={formState.notes}
-                    onChange={(e) => handleChange('notes', e.target.value)}
-                    style={styles.textarea}
-                    rows={4}
-                  />
-                </label>
-              </div>
-
-              <div style={styles.modalActions}>
-                <button
-                  onClick={() => {
-                    resetForm();
-                    setIsEditing(false);
-                  }}
-                  style={styles.cancelButton}
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleSave}
-                  style={styles.updateButton}
-                >
-                  Save Changes
-                </button>
-              </div>
-            </>
+          <div style={styles.detailRow}>
+            <strong>Company:</strong> {job.company}
+          </div>
+          <div style={styles.detailRow}>
+            <strong>Location:</strong> {job.location}
+          </div>
+          {job.salary && job.salary !== 'Not specified' && (
+            <div style={styles.detailRow}>
+              <strong>Salary:</strong> {job.salary}
+            </div>
           )}
+          <div style={styles.detailRow}>
+            <strong>Job Type:</strong> {job.jobType || 'Not specified'}
+          </div>
+          <div style={styles.detailRow}>
+            <strong>Experience Level:</strong> {job.experienceLevel || 'Not specified'}
+          </div>
+          <div style={styles.detailRow}>
+            <strong>Work Arrangement:</strong> {job.workArrangement || 'Not specified'}
+          </div>
+          <div style={styles.detailRow}>
+            <strong>Date Applied:</strong> {new Date(job.dateApplied).toLocaleDateString()}
+          </div>
+          <div style={styles.detailRow}>
+            <strong>Priority:</strong> {job.priority}
+          </div>
+
+          {job.technicalDetails && job.technicalDetails.length > 0 && (
+            <div style={styles.detailRow}>
+              <strong>Skills:</strong>
+              <div style={styles.tags}>
+                {job.technicalDetails.map((tech, idx) => (
+                  <span key={idx} style={styles.tag}>{tech}</span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {job.notes && (
+            <div style={styles.detailRow}>
+              <strong>Notes:</strong>
+              <p style={styles.notes}>{job.notes}</p>
+            </div>
+          )}
+
+          {job.jobUrl && (
+            <div style={styles.detailRow}>
+              <a 
+                href={job.jobUrl} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                style={styles.link}
+              >
+                🔗 View Job Posting
+              </a>
+            </div>
+          )}
+
+          <div style={styles.statusUpdate}>
+            <label style={styles.label}>Update Status:</label>
+            <select 
+              value={newStatus}
+              onChange={(e) => setNewStatus(e.target.value)}
+              style={styles.select}
+            >
+              <option value="Applied">Applied</option>
+              <option value="OA">OA</option>
+              <option value="Behavioral Interview">Behavioral Interview</option>
+              <option value="Technical Interview">Technical Interview</option>
+              <option value="Final Interview">Final Interview</option>
+              <option value="Offer">Offer</option>
+              <option value="Rejected">Rejected</option>
+              <option value="No Response">No Response</option>
+            </select>
+            <button 
+              onClick={() => onUpdateStatus(job._id, newStatus)}
+              style={styles.updateButton}
+            >
+              Update Status
+            </button>
+          </div>
         </div>
 
         <div style={styles.modalFooter}>
@@ -1389,28 +1026,6 @@ const styles = {
     gap: '12px',
     flexWrap: 'wrap',
   },
-  collectionToggles: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '10px',
-    flexWrap: 'wrap',
-  },
-  checkboxLabel: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '6px',
-    padding: '6px 10px',
-    background: '#f3f4f6',
-    borderRadius: '10px',
-    fontSize: '13px',
-    color: '#374151',
-    cursor: 'pointer',
-  },
-  checkboxInput: {
-    width: '16px',
-    height: '16px',
-    accentColor: '#2563eb',
-  },
   select: {
     padding: '12px 14px',
     border: '2px solid #d1d5db',
@@ -1475,14 +1090,6 @@ const styles = {
     display: 'flex',
     alignItems: 'center',
     gap: '8px',
-  },
-  collectionBadge: {
-    background: '#fef3c7',
-    color: '#b45309',
-    fontSize: '11px',
-    fontWeight: '600',
-    padding: '4px 8px',
-    borderRadius: '999px',
   },
   starButton: {
     background: 'none',
@@ -1598,105 +1205,40 @@ const styles = {
   },
   modalBody: {
     padding: '24px',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '16px',
-  },
-  detailGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-    gap: '16px',
-  },
-  detailColumn: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '10px',
   },
   detailRow: {
+    marginBottom: '16px',
     fontSize: '14px',
     color: '#374151',
-    display: 'flex',
-    gap: '8px',
-    alignItems: 'center',
   },
   notes: {
-    marginTop: '4px',
+    marginTop: '8px',
     padding: '12px',
     background: '#f9fafb',
-    borderRadius: '10px',
+    borderRadius: '6px',
     fontSize: '14px',
     lineHeight: '1.5',
   },
   link: {
-    color: '#2563eb',
+    color: '#3b82f6',
     textDecoration: 'none',
     fontWeight: '600',
   },
   statusUpdate: {
-    marginTop: '8px',
-    padding: '16px',
+    marginTop: '24px',
+    padding: '20px',
     background: '#f9fafb',
-    borderRadius: '12px',
+    borderRadius: '8px',
     display: 'flex',
     flexDirection: 'column',
-    gap: '10px',
-  },
-  inlineStatus: {
-    display: 'flex',
-    gap: '10px',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-  },
-  editButton: {
-    padding: '10px 16px',
-    borderRadius: '10px',
-    border: '1px solid #d1d5db',
-    background: 'white',
-    cursor: 'pointer',
-    fontSize: '14px',
-    fontWeight: '600',
-  },
-  editGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-    gap: '16px',
-  },
-  editField: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '6px',
-    fontSize: '13px',
-    color: '#374151',
-    fontWeight: '600',
-  },
-  textarea: {
-    padding: '12px',
-    borderRadius: '10px',
-    border: '1px solid #d1d5db',
-    fontSize: '14px',
-    resize: 'vertical',
-  },
-  modalActions: {
-    display: 'flex',
-    justifyContent: 'flex-end',
     gap: '12px',
-    marginTop: '8px',
-  },
-  cancelButton: {
-    padding: '10px 18px',
-    borderRadius: '10px',
-    border: '1px solid #d1d5db',
-    background: 'white',
-    cursor: 'pointer',
-    fontSize: '14px',
-    fontWeight: '600',
   },
   updateButton: {
-    padding: '12px 20px',
-    background: '#2563eb',
+    padding: '12px',
+    background: '#3b82f6',
     color: 'white',
     border: 'none',
-    borderRadius: '12px',
+    borderRadius: '8px',
     cursor: 'pointer',
     fontSize: '14px',
     fontWeight: '600',
@@ -1706,36 +1248,13 @@ const styles = {
     borderTop: '1px solid #e5e7eb',
   },
   deleteButton: {
-    padding: '10px 18px',
+    padding: '10px 16px',
     background: '#fee2e2',
-    color: '#b91c1c',
+    color: '#dc2626',
     border: 'none',
-    borderRadius: '10px',
+    borderRadius: '8px',
     cursor: 'pointer',
     fontSize: '14px',
-    fontWeight: '600',
-  },
-  settingsModal: {
-    background: 'white',
-    borderRadius: '16px',
-    padding: '24px 28px',
-    maxWidth: '420px',
-    width: '100%',
-    boxShadow: '0 20px 45px rgba(15,23,42,0.2)',
-  },
-  settingActions: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: '20px',
-  },
-  resetButton: {
-    padding: '10px 16px',
-    borderRadius: '10px',
-    border: '1px solid #d1d5db',
-    background: 'white',
-    cursor: 'pointer',
-    fontSize: '13px',
     fontWeight: '600',
   },
 };
