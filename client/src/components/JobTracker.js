@@ -1,1341 +1,1192 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit, Trash2, Download, BarChart3, Calendar, Building, MapPin, RefreshCw, AlertCircle, X, Upload } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import axios from 'axios';
+import Analytics from './Analytics';
+
+const API_URL = 'https://jobtracker-production-2ed3.up.railway.app/api';
 
 const JobTracker = () => {
-  const [applications, setApplications] = useState([]);
-  const [showForm, setShowForm] = useState(false);
-  const [editingApp, setEditingApp] = useState(null);
-  const [filter, setFilter] = useState('all');
-  const [view, setView] = useState('table');
+  // State management
+  const [userId, setUserId] = useState('');
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [jobs, setJobs] = useState([]);
+  const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [stats, setStats] = useState({});
-  const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
-  const [showCsvUpload, setShowCsvUpload] = useState(false);
-
-  const API_BASE_URL = 'http://localhost:5000/api';
-
-  const [formData, setFormData] = useState({
-    company: '',
-    position: '',
-    location: '',
-    city: '',
-    state: '',
-    isRemote: false,
-    dateApplied: new Date().toISOString().split('T')[0], // Default to today
-    status: 'Applied',
-    priority: 'Medium',
-    jobUrl: '',
-    notes: '',
-    salary: '',
-    technicalDetails: []
-  });
-
-  // Updated status options to match backend
-  const statusOptions = [
-    'Applied', 'OA', 'Behavioral Interview', 'Technical Interview', 
-    'Final Interview', 'Offer', 'Rejected', 'No Response'
-  ];
+  const [selectedJob, setSelectedJob] = useState(null);
+  const [filterStatus, setFilterStatus] = useState('All');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [sortBy, setSortBy] = useState('dateApplied');
+  const [sortOrder, setSortOrder] = useState('desc');
+  const [activeTab, setActiveTab] = useState('dashboard');
   
-  // Updated priority options
-  const priorityOptions = ['Low', 'Medium', 'High', 'Dream Job'];
+  // Auto "No Response" settings
+  const [noResponseDays, setNoResponseDays] = useState(30);
+  const [showSettings, setShowSettings] = useState(false);
 
-  // US States plus Out of U.S. option
-  const stateOptions = [
-    'Out of U.S.',
-    'AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'FL', 'GA',
-    'HI', 'ID', 'IL', 'IN', 'IA', 'KS', 'KY', 'LA', 'ME', 'MD',
-    'MA', 'MI', 'MN', 'MS', 'MO', 'MT', 'NE', 'NV', 'NH', 'NJ',
-    'NM', 'NY', 'NC', 'ND', 'OH', 'OK', 'OR', 'PA', 'RI', 'SC',
-    'SD', 'TN', 'TX', 'UT', 'VT', 'VA', 'WA', 'WV', 'WI', 'WY'
-  ];
-
-  // API Functions
-  const fetchApplications = async () => {
-    setLoading(true);
-    setError('');
-    try {
-      const [appsResponse, statsResponse] = await Promise.all([
-        axios.get(`${API_BASE_URL}/applications`),
-        axios.get(`${API_BASE_URL}/stats`)
-      ]);
-      
-      // Handle the correct response structure
-      setApplications(appsResponse.data.data || appsResponse.data);
-      setStats(statsResponse.data.data || statsResponse.data);
-      console.log('✅ Connected to backend successfully!');
-    } catch (error) {
-      console.error('❌ Backend connection failed:', error.message);
-      setError('Cannot connect to backend server. Please check if the server is running.');
-      // Remove sample data loading - show empty state instead
-      setApplications([]);
-      setStats({});
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const createApplication = async (appData) => {
-    try {
-      const response = await axios.post(`${API_BASE_URL}/applications`, appData);
-      const newApp = response.data.data || response.data;
-      setApplications(prev => [...prev, newApp]);
-      setError('');
-      await fetchApplications(); // Refresh stats
-      return true;
-    } catch (error) {
-      console.error('Create failed:', error);
-      const newApp = { ...appData, id: Date.now() };
-      setApplications(prev => [...prev, newApp]);
-      return true;
-    }
-  };
-
-  const updateApplication = async (id, appData) => {
-    try {
-      const response = await axios.put(`${API_BASE_URL}/applications/${id}`, appData);
-      const updatedApp = response.data.data || response.data;
-      setApplications(prev => prev.map(app => app.id === id || app._id === id ? updatedApp : app));
-      setError('');
-      await fetchApplications(); // Refresh stats
-      return true;
-    } catch (error) {
-      console.error('Update failed:', error);
-      setApplications(prev => prev.map(app => 
-        (app.id === id || app._id === id) ? { ...appData, id: id || app._id } : app
-      ));
-      return true;
-    }
-  };
-
-  const deleteApplication = async (id) => {
-    try {
-      await axios.delete(`${API_BASE_URL}/applications/${id}`);
-      setApplications(prev => prev.filter(app => app.id !== id && app._id !== id));
-      setError('');
-      await fetchApplications(); // Refresh stats
-      return true;
-    } catch (error) {
-      console.error('Delete failed:', error);
-      setApplications(prev => prev.filter(app => app.id !== id && app._id !== id));
-      return true;
-    }
-  };
-
+  // Check localStorage for saved userId and settings
   useEffect(() => {
-    fetchApplications();
+    const savedUserId = localStorage.getItem('jobTrackerUserId');
+    const savedDays = localStorage.getItem('noResponseDays');
+    
+    if (savedUserId) {
+      setUserId(savedUserId);
+      handleLogin(savedUserId);
+    }
+    
+    if (savedDays) {
+      setNoResponseDays(parseInt(savedDays));
+    }
   }, []);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    
-    if (!formData.company || !formData.position) {
-      setError('Please fill in all required fields (Company, Position)');
+  // Save noResponseDays to localStorage when changed
+  useEffect(() => {
+    localStorage.setItem('noResponseDays', noResponseDays.toString());
+  }, [noResponseDays]);
+
+  // Login/Authentication
+  const handleLogin = async (userIdToUse) => {
+    const id = userIdToUse || userId;
+    if (!id.trim()) {
+      setError('Please enter your User ID');
       return;
     }
-    
-    setLoading(true);
-    let success = false;
-    
-    if (editingApp) {
-      success = await updateApplication(editingApp.id || editingApp._id, formData);
-    } else {
-      success = await createApplication(formData);
-    }
-    
-    if (success) {
-      resetForm();
-    }
-    
-    setLoading(false);
-  };
-
-  const handleEdit = (app) => {
-    setFormData({
-      company: app.company || '',
-      position: app.position || '',
-      location: app.location || '',
-      dateApplied: app.dateApplied ? app.dateApplied.split('T')[0] : '',
-      status: app.status || 'Applied',
-      priority: app.priority || 'Medium',
-      jobUrl: app.jobUrl || '',
-      notes: app.notes || '',
-      salary: app.salary || '',
-      contactPerson: app.contactPerson || '',
-      technicalDetails: app.technicalDetails || []
-    });
-    setEditingApp(app);
-    setShowForm(true);
-    setError('');
-  };
-
-  const handleDelete = async (id) => {
-    if (window.confirm('Are you sure you want to delete this application?')) {
-      setLoading(true);
-      await deleteApplication(id);
-      setLoading(false);
-    }
-  };
-
-  const resetForm = () => {
-    setFormData({
-      company: '',
-      position: '',
-      location: '',
-      dateApplied: '',
-      status: 'Applied',
-      priority: 'Medium',
-      jobUrl: '',
-      notes: '',
-      salary: '',
-      contactPerson: '',
-      technicalDetails: []
-    });
-    setShowForm(false);
-    setEditingApp(null);
-    setError('');
-  };
-
-  const exportToCSV = () => {
-    const headers = ['Company', 'Position', 'Location', 'Date Applied', 'Status', 'Priority', 'Salary', 'Technical Details', 'Notes'];
-    const csvContent = [
-      headers.join(','),
-      ...applications.map(app => [
-        `"${app.company}"`,
-        `"${app.position}"`,
-        `"${app.location || ''}"`,
-        app.dateApplied,
-        app.status,
-        app.priority,
-        `"${app.salary || ''}"`,
-        `"${(app.technicalDetails || []).join(', ')}"`,
-        `"${app.notes || ''}"`
-      ].join(','))
-    ].join('\n');
-
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    
-    // Add timestamp to filename
-    const timestamp = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
-    link.setAttribute('href', url);
-    link.setAttribute('download', `job-applications-${timestamp}.csv`);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
-  const handleCsvUpload = async (event) => {
-    const file = event.target.files[0];
-    if (!file) return;
-
-    const formData = new FormData();
-    formData.append('csvFile', file);
 
     setLoading(true);
+    setError('');
+
     try {
-      const response = await axios.post(`${API_BASE_URL}/upload/csv`, formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data'
-        }
+      const response = await fetch(`${API_URL}/stats`, {
+        headers: { 'x-user-id': id }
       });
 
-      if (response.data.success) {
-        setError('');
-        alert(`CSV uploaded successfully! Created: ${response.data.stats.created}, Updated: ${response.data.stats.updated}`);
-        await fetchApplications(); // Refresh data
+      if (response.ok) {
+        const result = await response.json();
+        if (result.success) {
+          localStorage.setItem('jobTrackerUserId', id);
+          setIsAuthenticated(true);
+          await fetchData(id);
+        } else {
+          setError('Invalid User ID');
+        }
+      } else {
+        setError('Invalid User ID or connection error');
       }
-    } catch (error) {
-      console.error('CSV upload failed:', error);
-      setError(`Failed to upload CSV: ${error.response?.data?.message || error.message}`);
+    } catch (err) {
+      setError('Could not connect to server');
+      console.error(err);
     } finally {
       setLoading(false);
-      setShowCsvUpload(false);
-      // Reset file input
-      event.target.value = '';
     }
   };
 
-  const filteredApplications = applications.filter(app => 
-    filter === 'all' || app.status === filter
-  );
+  // Fetch all data
+  const fetchData = async (id) => {
+    setLoading(true);
+    try {
+      // Fetch stats
+      const statsRes = await fetch(`${API_URL}/stats`, {
+        headers: { 'x-user-id': id }
+      });
+      const statsData = await statsRes.json();
+      if (statsData.success) setStats(statsData.data);
 
-  // Sorting functions
-  const handleSort = (key) => {
-    let direction = 'asc';
-    if (sortConfig.key === key && sortConfig.direction === 'asc') {
-      direction = 'desc';
+      // Fetch jobs
+      const jobsRes = await fetch(`${API_URL}/applications`, {
+        headers: { 'x-user-id': id }
+      });
+      const jobsData = await jobsRes.json();
+      if (jobsData.success) {
+        const updatedJobs = await autoUpdateNoResponse(jobsData.data, id);
+        setJobs(updatedJobs);
+      }
+    } catch (err) {
+      console.error('Error fetching data:', err);
+    } finally {
+      setLoading(false);
     }
-    setSortConfig({ key, direction });
   };
 
-  const sortedApplications = React.useMemo(() => {
-    if (!sortConfig.key) return filteredApplications;
+  // Auto-update jobs to "No Response" if past threshold
+  const autoUpdateNoResponse = async (jobsList, id) => {
+    const now = new Date();
+    const updatedJobs = [];
+    
+    for (const job of jobsList) {
+      if (job.status === 'Applied') {
+        const appliedDate = new Date(job.dateApplied);
+        const daysSinceApplied = Math.floor((now - appliedDate) / (1000 * 60 * 60 * 24));
+        
+        if (daysSinceApplied >= noResponseDays) {
+          try {
+            await fetch(`${API_URL}/applications/${job._id}`, {
+              method: 'PUT',
+              headers: {
+                'Content-Type': 'application/json',
+                'x-user-id': id
+              },
+              body: JSON.stringify({ status: 'No Response' })
+            });
+            updatedJobs.push({ ...job, status: 'No Response' });
+          } catch (err) {
+            console.error('Error auto-updating job:', err);
+            updatedJobs.push(job);
+          }
+        } else {
+          updatedJobs.push(job);
+        }
+      } else {
+        updatedJobs.push(job);
+      }
+    }
+    
+    return updatedJobs;
+  };
 
-    return [...filteredApplications].sort((a, b) => {
-      const { key, direction } = sortConfig;
-      const modifier = direction === 'asc' ? 1 : -1;
+  // Logout
+  const handleLogout = () => {
+    localStorage.removeItem('jobTrackerUserId');
+    setIsAuthenticated(false);
+    setUserId('');
+    setJobs([]);
+    setStats(null);
+  };
 
-      switch (key) {
-        case 'company':
-        case 'position':
-          return modifier * (a[key] || '').localeCompare(b[key] || '');
+  // Update job status
+  const updateJobStatus = async (jobId, newStatus) => {
+    try {
+      const response = await fetch(`${API_URL}/applications/${jobId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-id': userId
+        },
+        body: JSON.stringify({ status: newStatus })
+      });
 
-        case 'location':
-          // Sort by state first, then city, with Remote at first or last
-          const getLocationParts = (location) => {
-            if (!location) return ['', '', false];
-            const trimmed = location.trim();
-            if (trimmed.toLowerCase() === 'remote') return ['', '', true];
-            
-            const parts = trimmed.split(',').map(part => part.trim());
-            if (parts.length >= 2) {
-              return [parts[parts.length - 1], parts[0], false]; // [state, city, isRemote]
-            }
-            return [parts[0] || '', '', false];
-          };
-          
-          const [aState, aCity, aIsRemote] = getLocationParts(a.location);
-          const [bState, bCity, bIsRemote] = getLocationParts(b.location);
-          
-          // Handle Remote positioning based on sort direction
-          if (aIsRemote && bIsRemote) return 0;
-          if (aIsRemote) return direction === 'asc' ? -1 : 1; // Remote first when asc, last when desc
-          if (bIsRemote) return direction === 'asc' ? 1 : -1;
-          
-          // Normal location sorting for non-remote
-          const stateCompare = aState.localeCompare(bState);
-          if (stateCompare !== 0) return modifier * stateCompare;
-          return modifier * aCity.localeCompare(bCity);
+      if (response.ok) {
+        await fetchData(userId);
+        setSelectedJob(null);
+      }
+    } catch (err) {
+      console.error('Error updating job:', err);
+    }
+  };
 
-        case 'dateApplied':
-          const dateA = new Date(a.dateApplied || 0);
-          const dateB = new Date(b.dateApplied || 0);
-          return modifier * (dateA.getTime() - dateB.getTime());
+  // NEW: Toggle star/priority
+  const toggleStar = async (job, e) => {
+    e.stopPropagation(); // Prevent opening modal
+    
+    // Toggle between High and Medium priority
+    const newPriority = job.priority === 'High' ? 'Medium' : 'High';
+    
+    try {
+      const response = await fetch(`${API_URL}/applications/${job._id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-id': userId
+        },
+        body: JSON.stringify({ priority: newPriority })
+      });
 
-        case 'status':
-          const statusOrder = [
-            'Applied', 'OA', 'Behavioral Interview', 'Technical Interview', 
-            'Final Interview', 'Offer', 'Rejected', 'No Response'
-          ];
-          const statusOrderReverse = [
-            'Offer', 'Final Interview', 'Technical Interview', 'Behavioral Interview',
-            'OA', 'Applied', 'Rejected', 'No Response'
-          ];
-          
-          const orderToUse = direction === 'asc' ? statusOrder : statusOrderReverse;
-          const indexA = orderToUse.indexOf(a.status);
-          const indexB = orderToUse.indexOf(b.status);
-          return (indexA === -1 ? 999 : indexA) - (indexB === -1 ? 999 : indexB);
+      if (response.ok) {
+        // Update local state immediately for better UX
+        setJobs(jobs.map(j => 
+          j._id === job._id ? { ...j, priority: newPriority } : j
+        ));
+      }
+    } catch (err) {
+      console.error('Error toggling star:', err);
+    }
+  };
 
-        case 'priority':
-          const priorityOrder = direction === 'asc' 
-            ? ['Low', 'Medium', 'High', 'Dream Job']
-            : ['Dream Job', 'High', 'Medium', 'Low'];
-          const priorityIndexA = priorityOrder.indexOf(a.priority);
-          const priorityIndexB = priorityOrder.indexOf(b.priority);
-          return (priorityIndexA === -1 ? 999 : priorityIndexA) - (priorityIndexB === -1 ? 999 : priorityIndexB);
+  // Delete job
+  const deleteJob = async (jobId) => {
+    if (!window.confirm('Are you sure you want to delete this job?')) return;
 
-        case 'salary':
-          // Extract numeric value from salary string
-          const extractSalary = (salaryStr) => {
-            if (!salaryStr) return 0;
-            const matches = salaryStr.match(/[\d,]+/);
-            return matches ? parseInt(matches[0].replace(/,/g, ''), 10) : 0;
-          };
-          
-          const salaryA = extractSalary(a.salary);
-          const salaryB = extractSalary(b.salary);
-          return modifier * (direction === 'asc' ? salaryA - salaryB : salaryB - salaryA);
+    try {
+      const response = await fetch(`${API_URL}/applications/${jobId}`, {
+        method: 'DELETE',
+        headers: { 'x-user-id': userId }
+      });
 
-        default:
-          return 0;
+      if (response.ok) {
+        await fetchData(userId);
+        setSelectedJob(null);
+      }
+    } catch (err) {
+      console.error('Error deleting job:', err);
+    }
+  };
+
+  // Enhanced filter - search company, position, location, AND keywords
+  const filteredJobs = jobs
+    .filter(job => {
+      const matchesStatus = filterStatus === 'All' || job.status === filterStatus;
+      
+      const searchLower = searchTerm.toLowerCase();
+      const matchesSearch = 
+        job.company.toLowerCase().includes(searchLower) ||
+        job.position.toLowerCase().includes(searchLower) ||
+        (job.location && job.location.toLowerCase().includes(searchLower)) ||
+        (job.technicalDetails && job.technicalDetails.some(tech => 
+          tech.toLowerCase().includes(searchLower)
+        ));
+      
+      return matchesStatus && matchesSearch;
+    })
+    .sort((a, b) => {
+      let aVal = a[sortBy];
+      let bVal = b[sortBy];
+      
+      if (sortBy === 'dateApplied' || sortBy === 'createdAt') {
+        aVal = new Date(aVal);
+        bVal = new Date(bVal);
+      }
+      
+      if (sortOrder === 'asc') {
+        return aVal > bVal ? 1 : -1;
+      } else {
+        return aVal < bVal ? 1 : -1;
       }
     });
-  }, [filteredApplications, sortConfig]);
 
-  const getSortIcon = (columnKey) => {
-    if (sortConfig.key !== columnKey) {
-      return '↕️';
-    }
-    return sortConfig.direction === 'asc' ? '↑' : '↓';
-  };
+  // Login Screen
+  if (!isAuthenticated) {
+    return (
+      <div style={styles.loginContainer}>
+        <div style={styles.loginBox}>
+          <h1 style={styles.loginTitle}>🎯 Job Tracker</h1>
+          <p style={styles.loginSubtitle}>Track your job applications with ease</p>
+          
+          <div style={styles.loginForm}>
+            <label style={styles.label}>User ID</label>
+            <input
+              type="text"
+              value={userId}
+              onChange={(e) => setUserId(e.target.value)}
+              onKeyPress={(e) => e.key === 'Enter' && handleLogin()}
+              placeholder="job-tracker_yourname"
+              style={styles.input}
+            />
+            
+            {error && <div style={styles.error}>{error}</div>}
+            
+            <button 
+              onClick={() => handleLogin()}
+              disabled={loading}
+              style={styles.loginButton}
+            >
+              {loading ? 'Connecting...' : 'Access Dashboard'}
+            </button>
+          </div>
 
-  // Analytics data - Updated to focus on positive metrics
-  const statusCounts = statusOptions.reduce((acc, status) => {
-    acc[status] = applications.filter(app => app.status === status).length;
-    return acc;
-  }, {});
-
-  // Chart data - show all positive statuses including zeros
-  const positiveStatuses = ['Applied', 'OA', 'Behavioral Interview', 'Technical Interview', 'Final Interview', 'Offer'];
-  const chartData = positiveStatuses.map(status => ({
-    name: status === 'Behavioral Interview' ? 'Behavioral' : 
-          status === 'Technical Interview' ? 'Technical' :
-          status === 'Final Interview' ? 'Final' : status,
-    count: statusCounts[status] || 0,
-    fullName: status
-  }));
-  
-  // Debug log to check data
-  console.log('Chart data:', chartData);
-
-  // Interview breakdown data - always show all types
-  const interviewTypes = [
-    { name: 'Behavioral Interview', count: statusCounts['Behavioral Interview'] || 0, color: '#10B981' },
-    { name: 'Technical Interview', count: statusCounts['Technical Interview'] || 0, color: '#F59E0B' },
-    { name: 'Final Interview', count: statusCounts['Final Interview'] || 0, color: '#8B5CF6' }
-  ];
-
-  const totalInterviews = interviewTypes.reduce((sum, type) => sum + type.count, 0);
-
-  const pieColors = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#06B6D4'];
-
-  return (
-    <div style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%)', padding: '20px' }}>
-      <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
-        {/* Header */}
-        <div style={{ backgroundColor: 'white', borderRadius: '12px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)', marginBottom: '24px', padding: '24px' }}>
-          <div style={{ marginBottom: '24px' }}>
-            <h1 style={{ fontSize: '28px', fontWeight: 'bold', color: '#1f2937', margin: '0 0 8px 0' }}>
-              Job Application Tracker
-            </h1>
-            <p style={{ color: '#6b7280', margin: 0 }}>
-              Track your job applications and manage your career journey
+          <div style={styles.loginFooter}>
+            <p style={styles.footerText}>
+              Don't have a User ID? Contact the administrator.
             </p>
-            
-            {error && (
-              <div style={{ 
-                marginTop: '16px', 
-                padding: '12px', 
-                backgroundColor: '#fef2f2', 
-                border: '1px solid #fecaca',
-                borderRadius: '8px',
-                color: '#dc2626',
-                fontSize: '14px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px'
-              }}>
-                <AlertCircle size={16} />
-                {error}
-              </div>
-            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
-        {/* CSV Upload Modal */}
-        {showCsvUpload && (
-          <div style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.5)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '16px',
-            zIndex: 1000
-          }}>
-            <div style={{
-              backgroundColor: 'white',
-              borderRadius: '12px',
-              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-              maxWidth: '500px',
-              width: '100%',
-              padding: '24px'
-            }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                <h2 style={{ fontSize: '20px', fontWeight: 'bold', color: '#1f2937', margin: 0 }}>
-                  Upload CSV File
-                </h2>
-                <button
-                  onClick={() => setShowCsvUpload(false)}
-                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#6b7280' }}
-                >
-                  <X size={24} />
-                </button>
-              </div>
-
-              <div style={{ marginBottom: '20px' }}>
-                <p style={{ color: '#6b7280', fontSize: '14px', marginBottom: '16px' }}>
-                  Upload a CSV file with your job applications. The file should have columns for Company, Position, Location, Status, Priority, etc.
-                </p>
-                
-                <div style={{ 
-                  border: '2px dashed #d1d5db',
-                  borderRadius: '8px',
-                  padding: '40px 20px',
-                  textAlign: 'center',
-                  backgroundColor: '#f9fafb'
-                }}>
-                  <Upload size={32} style={{ color: '#9ca3af', margin: '0 auto 12px auto' }} />
-                  <p style={{ color: '#374151', fontSize: '16px', fontWeight: '500', margin: '0 0 8px 0' }}>
-                    Choose CSV file
-                  </p>
-                  <p style={{ color: '#6b7280', fontSize: '14px', margin: '0 0 16px 0' }}>
-                    or drag and drop it here
-                  </p>
-                  <input
-                    type="file"
-                    accept=".csv"
-                    onChange={handleCsvUpload}
-                    disabled={loading}
+  // Main Dashboard
+  return (
+    <div style={styles.container}>
+      {/* Enhanced Header with Integrated Navigation */}
+      <header style={styles.header}>
+        <div style={styles.headerContent}>
+          <div style={styles.headerLeft}>
+            <div style={styles.logoArea}>
+              <span style={styles.logo}>📊</span>
+              <div style={styles.titleArea}>
+                <h1 style={styles.headerTitle}>Job Application Tracker</h1>
+                <div style={styles.tabToggle}>
+                  <button 
+                    onClick={() => setActiveTab('dashboard')}
                     style={{
-                      padding: '8px 16px',
-                      backgroundColor: '#2563eb',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '6px',
-                      cursor: loading ? 'not-allowed' : 'pointer',
-                      fontSize: '14px',
-                      opacity: loading ? 0.6 : 1
+                      ...styles.tabButton,
+                      ...(activeTab === 'dashboard' ? styles.tabButtonActive : {})
                     }}
-                  />
+                  >
+                    Dashboard
+                  </button>
+                  <button 
+                    onClick={() => setActiveTab('analytics')}
+                    style={{
+                      ...styles.tabButton,
+                      ...(activeTab === 'analytics' ? styles.tabButtonActive : {})
+                    }}
+                  >
+                    Analytics
+                  </button>
                 </div>
               </div>
-
-              <div style={{ fontSize: '12px', color: '#6b7280' }}>
-                <strong>Expected CSV format:</strong><br/>
-                Company*, Position*, Location, Status, Priority, Date Applied, Salary, Technical Details, Notes<br/>
-                <em>* Required fields. Date defaults to today, Status/Priority have defaults.</em>
-              </div>
-
-              {loading && (
-                <div style={{ textAlign: 'center', marginTop: '16px', color: '#6b7280' }}>
-                  Uploading CSV file...
-                </div>
-              )}
             </div>
           </div>
-        )}
-          </div>
-
-          {/* Action Buttons */}
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', marginBottom: '24px' }}>
+          
+          <div style={styles.headerRight}>
             <button 
-              onClick={() => fetchApplications()}
-              disabled={loading}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '10px 16px',
-                backgroundColor: '#6b7280',
-                color: 'white',
-                borderRadius: '8px',
-                border: 'none',
-                cursor: loading ? 'not-allowed' : 'pointer',
-                fontSize: '14px',
-                fontWeight: '500',
-                opacity: loading ? 0.6 : 1
-              }}
+              onClick={() => setShowSettings(!showSettings)}
+              style={styles.settingsBtn}
+              title="Settings"
             >
-              <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
-              Refresh
+              ⚙️
             </button>
-            
-            <button 
-              onClick={() => setView(view === 'table' ? 'analytics' : 'table')}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '10px 16px',
-                backgroundColor: '#4f46e5',
-                color: 'white',
-                borderRadius: '8px',
-                border: 'none',
-                cursor: 'pointer',
-                fontSize: '14px',
-                fontWeight: '500'
-              }}
-            >
-              <BarChart3 size={16} />
-              {view === 'table' ? 'Analytics' : 'Table View'}
+            <span style={styles.userBadge}>👤 {userId}</span>
+            <button onClick={handleLogout} style={styles.logoutBtn}>
+              Logout
             </button>
-            
-            <button 
-              onClick={exportToCSV}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '10px 16px',
-                backgroundColor: '#059669',
-                color: 'white',
-                borderRadius: '8px',
-                border: 'none',
-                cursor: 'pointer',
-                fontSize: '14px',
-                fontWeight: '500'
-              }}
-            >
-              <Download size={16} />
-              Export CSV
-            </button>
-            
-            <button 
-              onClick={() => setShowCsvUpload(true)}
-              disabled={loading}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '10px 16px',
-                backgroundColor: '#7c3aed',
-                color: 'white',
-                borderRadius: '8px',
-                border: 'none',
-                cursor: loading ? 'not-allowed' : 'pointer',
-                fontSize: '14px',
-                fontWeight: '500',
-                opacity: loading ? 0.6 : 1
-              }}
-            >
-              <Upload size={16} />
-              Upload CSV
-            </button>
-            
-            <button 
-              onClick={() => setShowForm(true)}
-              disabled={loading}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '10px 16px',
-                backgroundColor: '#2563eb',
-                color: 'white',
-                borderRadius: '8px',
-                border: 'none',
-                cursor: loading ? 'not-allowed' : 'pointer',
-                fontSize: '14px',
-                fontWeight: '500',
-                opacity: loading ? 0.6 : 1
-              }}
-            >
-              <Plus size={16} />
-              Add Application
-            </button>
-          </div>
-
-          {/* Updated Stats Cards with time-based logic */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
-            <div style={{ padding: '20px', backgroundColor: '#eff6ff', borderRadius: '8px' }}>
-              <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#1d4ed8' }}>
-                {applications.filter(app => ['Applied'].includes(app.status)).length}
-              </div>
-              <div style={{ color: '#1e40af', fontSize: '14px' }}>Applied</div>
-            </div>
-            
-            <div style={{ padding: '20px', backgroundColor: '#f0fdf4', borderRadius: '8px' }}>
-              <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#059669' }}>
-                {applications.filter(app => {
-                  // Applications within two weeks OR in interview stages
-                  const twoWeeksAgo = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000);
-                  const appDate = new Date(app.dateApplied || app.lastStatusUpdate);
-                  const isRecent = appDate >= twoWeeksAgo;
-                  const isInInterviewProcess = ['OA', 'Behavioral Interview', 'Technical Interview', 'Final Interview'].includes(app.status);
-                  
-                  return isRecent || isInInterviewProcess;
-                }).length}
-              </div>
-              <div style={{ color: '#047857', fontSize: '14px' }}>Active Opportunities</div>
-            </div>
-            
-            <div style={{ padding: '20px', backgroundColor: '#faf5ff', borderRadius: '8px' }}>
-              <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#7c3aed' }}>
-                {applications.filter(app => 
-                  ['Behavioral Interview', 'Technical Interview', 'Final Interview'].includes(app.status)
-                ).length}
-              </div>
-              <div style={{ color: '#6d28d9', fontSize: '14px' }}>Interview Progress</div>
-            </div>
-            
-            <div style={{ padding: '20px', backgroundColor: '#fef2f2', borderRadius: '8px' }}>
-              <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#dc2626' }}>
-                {applications.filter(app => {
-                  const twoWeeksAgo = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000);
-                  const appDate = new Date(app.dateApplied || app.lastStatusUpdate);
-                  const isOld = appDate < twoWeeksAgo;
-                  
-                  return app.status === 'Rejected' || (app.status === 'No Response' && isOld);
-                }).length}
-              </div>
-              <div style={{ color: '#b91c1c', fontSize: '14px' }}>Closed</div>
-            </div>
           </div>
         </div>
 
-        {/* Content Area */}
-        {view === 'analytics' ? (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '24px' }}>
-            {/* Progress Bar Chart - Positive statuses only */}
-            <div style={{ backgroundColor: 'white', borderRadius: '12px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)', padding: '24px' }}>
-              <h3 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '16px', color: '#1f2937' }}>
-                Application Progress
-              </h3>
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis 
-                    dataKey="name" 
-                    interval={0}
-                    tick={{ fontSize: 12 }}
-                    height={60}
-                  />
-                  <YAxis />
-                  <Tooltip formatter={(value, name, props) => [value, props.payload.fullName]} />
-                  <Bar dataKey="count" fill="#3b82f6" minPointSize={2} />
-                </BarChart>
-              </ResponsiveContainer>
+        {/* Settings Panel */}
+        {showSettings && (
+          <div style={styles.settingsPanel}>
+            <h3 style={styles.settingsTitle}>⚙️ Settings</h3>
+            <div style={styles.settingRow}>
+              <label style={styles.settingLabel}>
+                Auto "No Response" after:
+              </label>
+              <div style={styles.settingControl}>
+                <input
+                  type="number"
+                  min="1"
+                  max="365"
+                  value={noResponseDays}
+                  onChange={(e) => setNoResponseDays(parseInt(e.target.value))}
+                  style={styles.settingInput}
+                />
+                <span style={styles.settingUnit}>days</span>
+              </div>
+            </div>
+            <p style={styles.settingHint}>
+              Jobs with "Applied" status will automatically change to "No Response" after {noResponseDays} days
+            </p>
+          </div>
+        )}
+      </header>
+
+      {/* Conditional Rendering Based on Active Tab */}
+      {activeTab === 'dashboard' ? (
+        <>
+          {/* Stats Cards */}
+          {stats && (
+            <div style={styles.statsGrid}>
+              <StatCard 
+                title="Total Applications" 
+                value={stats.total} 
+                color="#3b82f6"
+                icon="📝"
+              />
+              <StatCard 
+                title="Active Opportunities" 
+                value={stats.activeOpportunities} 
+                color="#8b5cf6"
+                icon="🎯"
+              />
+              <StatCard 
+                title="Interviews" 
+                value={stats.interviewProgress} 
+                color="#f59e0b"
+                icon="💼"
+              />
+              <StatCard 
+                title="Offers" 
+                value={stats.offers} 
+                color="#10b981"
+                icon="🎉"
+              />
+            </div>
+          )}
+
+          {/* Enhanced Filters and Search */}
+          <div style={styles.controls}>
+            <div style={styles.searchBox}>
+              <input
+                type="text"
+                placeholder="🔍 Search by company, position, location, or skills..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                style={styles.searchInput}
+              />
             </div>
 
-            {/* Interview Types Breakdown */}
-            <div style={{ backgroundColor: 'white', borderRadius: '12px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)', padding: '24px' }}>
-              <h3 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '16px', color: '#1f2937' }}>
-                Interview Types
-              </h3>
-              {(() => {
-                const activeTypes = interviewTypes.filter(t => t.count > 0);
-                
-                if (activeTypes.length === 0) {
-                  // No interviews - show simple 0 in gray
-                  return (
-                    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '300px' }}>
-                      <div style={{
-                        backgroundColor: '#f3f4f6',
-                        borderRadius: '12px',
-                        padding: '32px',
-                        color: '#6b7280',
-                        textAlign: 'center',
-                        minWidth: '200px'
-                      }}>
-                        <div style={{ fontSize: '48px', fontWeight: 'bold', marginBottom: '8px' }}>
-                          0
-                        </div>
-                        <div style={{ fontSize: '18px', fontWeight: '500' }}>
-                          No Active Interviews
-                        </div>
-                      </div>
-                    </div>
-                  );
-                } else if (activeTypes.length === 1) {
-                  // Only one type active - show single card
-                  const activeType = activeTypes[0];
-                  return (
-                    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '300px' }}>
-                      <div style={{
-                        backgroundColor: activeType.color,
-                        borderRadius: '12px',
-                        padding: '32px',
-                        color: 'white',
-                        textAlign: 'center',
-                        minWidth: '200px'
-                      }}>
-                        <div style={{ fontSize: '48px', fontWeight: 'bold', marginBottom: '8px' }}>
-                          {activeType.count}
-                        </div>
-                        <div style={{ fontSize: '18px', fontWeight: '500' }}>
-                          {activeType.name}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                } else {
-                  // Multiple types active - show pie chart
-                  return (
-                    <ResponsiveContainer width="100%" height={300}>
-                      <PieChart>
-                        <Pie
-                          data={activeTypes}
-                          cx="50%"
-                          cy="50%"
-                          outerRadius={80}
-                          fill="#8884d8"
-                          dataKey="count"
-                          label={({ name, count }) => `${name.split(' ')[0]}: ${count}`}
-                        >
-                          {activeTypes.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={entry.color} />
-                          ))}
-                        </Pie>
-                        <Tooltip formatter={(value, name) => [value, name]} />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  );
-                }
-              })()}
+            <div style={styles.filters}>
+              <select 
+                value={filterStatus} 
+                onChange={(e) => setFilterStatus(e.target.value)}
+                style={styles.select}
+              >
+                <option value="All">All Status</option>
+                <option value="Applied">Applied</option>
+                <option value="OA">OA</option>
+                <option value="Behavioral Interview">Behavioral</option>
+                <option value="Technical Interview">Technical</option>
+                <option value="Final Interview">Final</option>
+                <option value="Offer">Offer</option>
+                <option value="Rejected">Rejected</option>
+                <option value="No Response">No Response</option>
+              </select>
+
+              <select 
+                value={sortBy} 
+                onChange={(e) => setSortBy(e.target.value)}
+                style={styles.select}
+              >
+                <option value="dateApplied">Date Applied</option>
+                <option value="createdAt">Date Saved</option>
+                <option value="company">Company</option>
+                <option value="position">Position</option>
+              </select>
+
+              <button 
+                onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+                style={styles.sortButton}
+              >
+                {sortOrder === 'asc' ? '⬆️' : '⬇️'}
+              </button>
+
+              <button 
+                onClick={() => fetchData(userId)}
+                style={styles.refreshButton}
+              >
+                🔄 Refresh
+              </button>
             </div>
           </div>
-        ) : (
-          <>
-            {/* Updated Filters with new status options */}
-            <div style={{ backgroundColor: 'white', borderRadius: '12px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)', marginBottom: '24px', padding: '16px' }}>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                <button
-                  onClick={() => setFilter('all')}
-                  style={{
-                    padding: '8px 16px',
-                    borderRadius: '8px',
-                    border: 'none',
-                    cursor: 'pointer',
-                    fontSize: '14px',
-                    fontWeight: '500',
-                    backgroundColor: filter === 'all' ? '#2563eb' : '#f3f4f6',
-                    color: filter === 'all' ? 'white' : '#374151'
-                  }}
-                >
-                  All ({applications.length})
-                </button>
-                {statusOptions.map(status => (
-                  <button
-                    key={status}
-                    onClick={() => setFilter(status)}
-                    style={{
-                      padding: '8px 16px',
-                      borderRadius: '8px',
-                      border: 'none',
-                      cursor: 'pointer',
-                      fontSize: '14px',
-                      fontWeight: '500',
-                      backgroundColor: filter === status ? '#2563eb' : '#f3f4f6',
-                      color: filter === status ? 'white' : '#374151'
-                    }}
-                  >
-                    {status} ({statusCounts[status] || 0})
-                  </button>
+
+          {/* Jobs List */}
+          <div style={styles.jobsContainer}>
+            {loading ? (
+              <div style={styles.loading}>Loading...</div>
+            ) : filteredJobs.length === 0 ? (
+              <div style={styles.emptyState}>
+                <div style={styles.emptyIcon}>🔭</div>
+                <h3>No applications found</h3>
+                <p>
+                  {searchTerm 
+                    ? `No results for "${searchTerm}". Try a different search term.`
+                    : 'Start tracking your job applications using the Chrome extension!'
+                  }
+                </p>
+              </div>
+            ) : (
+              <div style={styles.jobsGrid}>
+                {filteredJobs.map(job => (
+                  <JobCard 
+                    key={job._id} 
+                    job={job} 
+                    onClick={() => setSelectedJob(job)}
+                    onToggleStar={(e) => toggleStar(job, e)}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        </>
+      ) : (
+        <Analytics jobs={jobs} stats={stats} />
+      )}
+
+      {/* Job Detail Modal */}
+      {selectedJob && (
+        <JobDetailModal 
+          job={selectedJob}
+          onClose={() => setSelectedJob(null)}
+          onUpdateStatus={updateJobStatus}
+          onDelete={deleteJob}
+        />
+      )}
+    </div>
+  );
+};
+
+// Components
+const StatCard = ({ title, value, color, icon }) => (
+  <div style={{...styles.statCard, borderLeftColor: color}}>
+    <div style={styles.statIcon}>{icon}</div>
+    <div>
+      <div style={styles.statTitle}>{title}</div>
+      <div style={{...styles.statValue, color}}>{value}</div>
+    </div>
+  </div>
+);
+
+// NEW: JobCard with Star Button
+const JobCard = ({ job, onClick, onToggleStar }) => {
+  const statusColors = {
+    'Applied': '#3b82f6',
+    'OA': '#f59e0b',
+    'Behavioral Interview': '#8b5cf6',
+    'Technical Interview': '#f97316',
+    'Final Interview': '#6366f1',
+    'Offer': '#10b981',
+    'Rejected': '#ef4444',
+    'No Response': '#6b7280'
+  };
+
+  const isStarred = job.priority === 'High' || job.priority === 'Dream Job';
+
+  return (
+    <div style={styles.jobCard} onClick={onClick}>
+      <div style={styles.jobCardHeader}>
+        <h3 style={styles.jobTitle}>{job.position}</h3>
+        <div style={styles.cardActions}>
+          <button
+            onClick={onToggleStar}
+            style={{
+              ...styles.starButton,
+              color: isStarred ? '#f59e0b' : '#d1d5db'
+            }}
+            title={isStarred ? 'Remove from favorites' : 'Add to favorites'}
+          >
+            {isStarred ? '⭐' : '☆'}
+          </button>
+          <span 
+            style={{
+              ...styles.statusBadge, 
+              backgroundColor: statusColors[job.status] + '20',
+              color: statusColors[job.status]
+            }}
+          >
+            {job.status}
+          </span>
+        </div>
+      </div>
+
+      <div style={styles.jobCompany}>🏢 {job.company}</div>
+      <div style={styles.jobLocation}>📍 {job.location}</div>
+      
+      {job.salary && job.salary !== 'Not specified' && (
+        <div style={styles.jobSalary}>💰 {job.salary}</div>
+      )}
+
+      <div style={styles.jobMeta}>
+        <span style={styles.jobDate}>
+          📅 Applied: {new Date(job.dateApplied).toLocaleDateString()}
+        </span>
+      </div>
+
+      {job.technicalDetails && job.technicalDetails.length > 0 && (
+        <div style={styles.tags}>
+          {job.technicalDetails.slice(0, 3).map((tech, idx) => (
+            <span key={idx} style={styles.tag}>{tech}</span>
+          ))}
+          {job.technicalDetails.length > 3 && (
+            <span style={styles.tag}>+{job.technicalDetails.length - 3}</span>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
+const JobDetailModal = ({ job, onClose, onUpdateStatus, onDelete }) => {
+  const [newStatus, setNewStatus] = useState(job.status);
+
+  return (
+    <div style={styles.modalOverlay} onClick={onClose}>
+      <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
+        <div style={styles.modalHeader}>
+          <h2 style={styles.modalTitle}>{job.position}</h2>
+          <button onClick={onClose} style={styles.closeButton}>✕</button>
+        </div>
+
+        <div style={styles.modalBody}>
+          <div style={styles.detailRow}>
+            <strong>Company:</strong> {job.company}
+          </div>
+          <div style={styles.detailRow}>
+            <strong>Location:</strong> {job.location}
+          </div>
+          {job.salary && job.salary !== 'Not specified' && (
+            <div style={styles.detailRow}>
+              <strong>Salary:</strong> {job.salary}
+            </div>
+          )}
+          <div style={styles.detailRow}>
+            <strong>Job Type:</strong> {job.jobType || 'Not specified'}
+          </div>
+          <div style={styles.detailRow}>
+            <strong>Experience Level:</strong> {job.experienceLevel || 'Not specified'}
+          </div>
+          <div style={styles.detailRow}>
+            <strong>Work Arrangement:</strong> {job.workArrangement || 'Not specified'}
+          </div>
+          <div style={styles.detailRow}>
+            <strong>Date Applied:</strong> {new Date(job.dateApplied).toLocaleDateString()}
+          </div>
+          <div style={styles.detailRow}>
+            <strong>Priority:</strong> {job.priority}
+          </div>
+
+          {job.technicalDetails && job.technicalDetails.length > 0 && (
+            <div style={styles.detailRow}>
+              <strong>Skills:</strong>
+              <div style={styles.tags}>
+                {job.technicalDetails.map((tech, idx) => (
+                  <span key={idx} style={styles.tag}>{tech}</span>
                 ))}
               </div>
             </div>
+          )}
 
-            {/* Applications Table */}
-            <div style={{ backgroundColor: 'white', borderRadius: '12px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)', overflow: 'hidden' }}>
-              <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                  <thead style={{ backgroundColor: '#f9fafb' }}>
-                    <tr>
-                      {[
-                        { key: 'company', label: 'Company' },
-                        { key: 'position', label: 'Position' },
-                        { key: 'location', label: 'Location' },
-                        { key: 'dateApplied', label: 'Date Applied' },
-                        { key: 'status', label: 'Status' },
-                        { key: 'priority', label: 'Priority' },
-                        { key: 'salary', label: 'Salary' },
-                        { key: null, label: 'Actions' }
-                      ].map(header => (
-                        <th 
-                          key={header.key || header.label} 
-                          onClick={header.key ? () => handleSort(header.key) : undefined}
-                          style={{ 
-                            padding: '12px 16px', 
-                            textAlign: 'left', 
-                            fontSize: '12px', 
-                            fontWeight: '600', 
-                            color: '#6b7280',
-                            textTransform: 'uppercase',
-                            letterSpacing: '0.05em',
-                            cursor: header.key ? 'pointer' : 'default',
-                            userSelect: 'none',
-                            transition: 'background-color 0.2s',
-                            backgroundColor: header.key && sortConfig.key === header.key ? '#e5e7eb' : 'transparent'
-                          }}
-                          onMouseEnter={(e) => {
-                            if (header.key) e.target.style.backgroundColor = '#f3f4f6';
-                          }}
-                          onMouseLeave={(e) => {
-                            if (header.key) {
-                              e.target.style.backgroundColor = sortConfig.key === header.key ? '#e5e7eb' : 'transparent';
-                            }
-                          }}
-                        >
-                          {header.label}
-                          {header.key && (
-                            <span style={{ marginLeft: '4px', fontSize: '10px' }}>
-                              {getSortIcon(header.key)}
-                            </span>
-                          )}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {sortedApplications.map((app, index) => (
-                      <tr 
-                        key={app.id || app._id} 
-                        style={{ 
-                          borderTop: index > 0 ? '1px solid #e5e7eb' : 'none'
-                        }}
-                      >
-                        <td style={{ padding: '16px' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <Building size={16} style={{ color: '#6b7280' }} />
-                            <span style={{ fontWeight: '500', color: '#1f2937' }}>{app.company}</span>
-                          </div>
-                        </td>
-                        <td style={{ padding: '16px', color: '#1f2937' }}>{app.position}</td>
-                        <td style={{ padding: '16px' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#6b7280' }}>
-                            <MapPin size={14} />
-                            {app.location || 'N/A'}
-                          </div>
-                        </td>
-                        <td style={{ padding: '16px' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#6b7280' }}>
-                            <Calendar size={14} />
-                            {app.dateApplied ? new Date(app.dateApplied).toLocaleDateString() : 'N/A'}
-                          </div>
-                        </td>
-                        <td style={{ padding: '16px' }}>
-                          <span style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            padding: '4px 8px',
-                            borderRadius: '12px',
-                            fontSize: '12px',
-                            fontWeight: '600',
-                            backgroundColor: app.status === 'Offer' ? '#dcfce7' : 
-                                           app.status === 'Rejected' ? '#fee2e2' :
-                                           app.status === 'No Response' ? '#f3f4f6' :
-                                           app.status.includes('Interview') ? '#dbeafe' : '#fef3c7',
-                            color: app.status === 'Offer' ? '#166534' : 
-                                   app.status === 'Rejected' ? '#dc2626' :
-                                   app.status === 'No Response' ? '#6b7280' :
-                                   app.status.includes('Interview') ? '#1e40af' : '#d97706'
-                          }}>
-                            {app.status}
-                          </span>
-                        </td>
-                        <td style={{ padding: '16px' }}>
-                          <span style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            padding: '4px 8px',
-                            borderRadius: '12px',
-                            fontSize: '12px',
-                            fontWeight: '600',
-                            backgroundColor: app.priority === 'Dream Job' ? '#fdf2f8' :
-                                           app.priority === 'High' ? '#fee2e2' :
-                                           app.priority === 'Medium' ? '#fef3c7' : '#f0f9ff',
-                            color: app.priority === 'Dream Job' ? '#be185d' :
-                                   app.priority === 'High' ? '#dc2626' :
-                                   app.priority === 'Medium' ? '#d97706' : '#0369a1'
-                          }}>
-                            {app.priority}
-                          </span>
-                        </td>
-                        <td style={{ padding: '16px', color: '#1f2937' }}>{app.salary || 'N/A'}</td>
-                        <td style={{ padding: '16px' }}>
-                          <div style={{ display: 'flex', gap: '8px' }}>
-                            <button
-                              onClick={() => handleEdit(app)}
-                              style={{ 
-                                background: 'none', 
-                                border: 'none', 
-                                cursor: 'pointer', 
-                                color: '#4f46e5',
-                                padding: '4px',
-                                borderRadius: '4px'
-                              }}
-                            >
-                              <Edit size={16} />
-                            </button>
-                            <button
-                              onClick={() => handleDelete(app.id || app._id)}
-                              style={{ 
-                                background: 'none', 
-                                border: 'none', 
-                                cursor: 'pointer', 
-                                color: '#dc2626',
-                                padding: '4px',
-                                borderRadius: '4px'
-                              }}
-                            >
-                              <Trash2 size={16} />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-                
-                {sortedApplications.length === 0 && (
-                  <div style={{ padding: '40px', textAlign: 'center', color: '#6b7280' }}>
-                    No applications found. Click "Add Application" to get started!
-                  </div>
-                )}
-              </div>
+          {job.notes && (
+            <div style={styles.detailRow}>
+              <strong>Notes:</strong>
+              <p style={styles.notes}>{job.notes}</p>
             </div>
-          </>
-        )}
+          )}
 
-        {/* Updated Form Modal */}
-        {showForm && (
-          <div style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.5)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '16px',
-            zIndex: 1000
-          }}>
-            <div style={{
-              backgroundColor: 'white',
-              borderRadius: '12px',
-              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-              maxWidth: '600px',
-              width: '100%',
-              maxHeight: '90vh',
-              overflowY: 'auto'
-            }}>
-              <div style={{ padding: '24px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                  <h2 style={{ fontSize: '20px', fontWeight: 'bold', color: '#1f2937', margin: 0 }}>
-                    {editingApp ? 'Edit Application' : 'Add New Application'}
-                  </h2>
-                  <button
-                    onClick={resetForm}
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#6b7280' }}
-                  >
-                    <X size={24} />
-                  </button>
-                </div>
-
-                <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                    <div>
-                      <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '4px' }}>
-                        Company *
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        value={formData.company}
-                        onChange={(e) => setFormData({...formData, company: e.target.value})}
-                        style={{
-                          width: '100%',
-                          padding: '10px 12px',
-                          border: '1px solid #d1d5db',
-                          borderRadius: '6px',
-                          fontSize: '14px',
-                          outline: 'none'
-                        }}
-                      />
-                    </div>
-                    <div>
-                      <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '4px' }}>
-                        Position *
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        value={formData.position}
-                        onChange={(e) => setFormData({...formData, position: e.target.value})}
-                        style={{
-                          width: '100%',
-                          padding: '10px 12px',
-                          border: '1px solid #d1d5db',
-                          borderRadius: '6px',
-                          fontSize: '14px',
-                          outline: 'none'
-                        }}
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label style={{ 
-                      display: 'flex', 
-                      alignItems: 'center', 
-                      gap: '8px',
-                      fontSize: '14px', 
-                      fontWeight: '500', 
-                      color: '#374151',
-                      cursor: 'pointer',
-                      marginBottom: '16px'
-                    }}>
-                      <input
-                        type="checkbox"
-                        checked={formData.isRemote}
-                        onChange={(e) => setFormData({
-                          ...formData, 
-                          isRemote: e.target.checked,
-                          city: e.target.checked ? '' : formData.city,
-                          state: e.target.checked ? '' : formData.state
-                        })}
-                        style={{ cursor: 'pointer' }}
-                      />
-                      Remote Position
-                    </label>
-                  </div>
-
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                    <div>
-                      <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '4px' }}>
-                        City {!formData.isRemote && <span style={{ color: '#dc2626' }}>*</span>}
-                      </label>
-                      <input
-                        type="text"
-                        value={formData.city}
-                        onChange={(e) => setFormData({...formData, city: e.target.value})}
-                        disabled={formData.isRemote}
-                        required={!formData.isRemote}
-                        style={{
-                          width: '100%',
-                          padding: '10px 12px',
-                          border: '1px solid #d1d5db',
-                          borderRadius: '6px',
-                          fontSize: '14px',
-                          outline: 'none',
-                          backgroundColor: formData.isRemote ? '#f3f4f6' : 'white',
-                          color: formData.isRemote ? '#9ca3af' : '#1f2937'
-                        }}
-                        placeholder="e.g. San Francisco"
-                      />
-                    </div>
-                    <div>
-                      <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '4px' }}>
-                        State {!formData.isRemote && <span style={{ color: '#dc2626' }}>*</span>}
-                      </label>
-                      <select
-                        value={formData.state}
-                        onChange={(e) => setFormData({...formData, state: e.target.value})}
-                        disabled={formData.isRemote}
-                        required={!formData.isRemote}
-                        style={{
-                          width: '100%',
-                          padding: '10px 12px',
-                          border: '1px solid #d1d5db',
-                          borderRadius: '6px',
-                          fontSize: '14px',
-                          outline: 'none',
-                          backgroundColor: formData.isRemote ? '#f3f4f6' : 'white',
-                          color: formData.isRemote ? '#9ca3af' : '#1f2937'
-                        }}
-                      >
-                        <option value="">Select State</option>
-                        {stateOptions.map(state => (
-                          <option key={state} value={state}>{state}</option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '4px' }}>
-                      Date Applied
-                    </label>
-                    <input
-                      type="date"
-                      value={formData.dateApplied}
-                      onChange={(e) => setFormData({...formData, dateApplied: e.target.value})}
-                      style={{
-                        width: '100%',
-                        padding: '10px 12px',
-                        border: '1px solid #d1d5db',
-                        borderRadius: '6px',
-                        fontSize: '14px',
-                        outline: 'none'
-                      }}
-                    />
-                  </div>
-
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                    <div>
-                      <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '4px' }}>
-                        Status
-                      </label>
-                      <select
-                        value={formData.status}
-                        onChange={(e) => setFormData({...formData, status: e.target.value})}
-                        style={{
-                          width: '100%',
-                          padding: '10px 12px',
-                          border: '1px solid #d1d5db',
-                          borderRadius: '6px',
-                          fontSize: '14px',
-                          outline: 'none'
-                        }}
-                      >
-                        {statusOptions.map(status => (
-                          <option key={status} value={status}>
-                            {status}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '4px' }}>
-                        Priority
-                      </label>
-                      <select
-                        value={formData.priority}
-                        onChange={(e) => setFormData({...formData, priority: e.target.value})}
-                        style={{
-                          width: '100%',
-                          padding: '10px 12px',
-                          border: '1px solid #d1d5db',
-                          borderRadius: '6px',
-                          fontSize: '14px',
-                          outline: 'none'
-                        }}
-                      >
-                        {priorityOptions.map(priority => (
-                          <option key={priority} value={priority}>
-                            {priority}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '16px' }}>
-                    <div>
-                      <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '4px' }}>
-                        Salary (Optional)
-                      </label>
-                      <input
-                        type="text"
-                        value={formData.salary}
-                        onChange={(e) => setFormData({...formData, salary: e.target.value})}
-                        placeholder="e.g. $80,000 or $80k-$100k"
-                        style={{
-                          width: '100%',
-                          padding: '10px 12px',
-                          border: '1px solid #d1d5db',
-                          borderRadius: '6px',
-                          fontSize: '14px',
-                          outline: 'none'
-                        }}
-                      />
-                    </div>
-                  </div>
-
-                  {/* Technical Details Input */}
-                  <div>
-                    <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '4px' }}>
-                      Technical Details
-                    </label>
-                    <input
-                      type="text"
-                      value={(formData.technicalDetails || []).join(', ')}
-                      onChange={(e) => setFormData({
-                        ...formData, 
-                        technicalDetails: e.target.value.split(',').map(item => item.trim()).filter(item => item)
-                      })}
-                      placeholder="e.g. React, Node.js, MongoDB, AWS (comma separated)"
-                      style={{
-                        width: '100%',
-                        padding: '10px 12px',
-                        border: '1px solid #d1d5db',
-                        borderRadius: '6px',
-                        fontSize: '14px',
-                        outline: 'none'
-                      }}
-                    />
-                    <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>
-                      Enter skills/technologies separated by commas
-                    </div>
-                  </div>
-
-                  <div>
-                    <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '4px' }}>
-                      Job URL
-                    </label>
-                    <input
-                      type="url"
-                      value={formData.jobUrl}
-                      onChange={(e) => setFormData({...formData, jobUrl: e.target.value})}
-                      placeholder="https://company.com/job-posting"
-                      style={{
-                        width: '100%',
-                        padding: '10px 12px',
-                        border: '1px solid #d1d5db',
-                        borderRadius: '6px',
-                        fontSize: '14px',
-                        outline: 'none'
-                      }}
-                    />
-                  </div>
-
-                  <div>
-                    <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '4px' }}>
-                      Notes
-                    </label>
-                    <textarea
-                      rows={3}
-                      value={formData.notes}
-                      onChange={(e) => setFormData({...formData, notes: e.target.value})}
-                      placeholder="Any additional notes about this application..."
-                      style={{
-                        width: '100%',
-                        padding: '10px 12px',
-                        border: '1px solid #d1d5db',
-                        borderRadius: '6px',
-                        fontSize: '14px',
-                        outline: 'none',
-                        resize: 'vertical'
-                      }}
-                    />
-                  </div>
-
-                  <div style={{ display: 'flex', gap: '12px', paddingTop: '16px' }}>
-                    <button
-                      type="submit"
-                      disabled={loading}
-                      style={{
-                        flex: 1,
-                        padding: '12px 24px',
-                        backgroundColor: '#2563eb',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '8px',
-                        fontSize: '14px',
-                        fontWeight: '500',
-                        cursor: loading ? 'not-allowed' : 'pointer',
-                        opacity: loading ? 0.6 : 1
-                      }}
-                    >
-                      {loading ? 'Saving...' : (editingApp ? 'Update Application' : 'Add Application')}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={resetForm}
-                      style={{
-                        flex: 1,
-                        padding: '12px 24px',
-                        backgroundColor: '#6b7280',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '8px',
-                        fontSize: '14px',
-                        fontWeight: '500',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </form>
-              </div>
+          {job.jobUrl && (
+            <div style={styles.detailRow}>
+              <a 
+                href={job.jobUrl} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                style={styles.link}
+              >
+                🔗 View Job Posting
+              </a>
             </div>
+          )}
+
+          <div style={styles.statusUpdate}>
+            <label style={styles.label}>Update Status:</label>
+            <select 
+              value={newStatus}
+              onChange={(e) => setNewStatus(e.target.value)}
+              style={styles.select}
+            >
+              <option value="Applied">Applied</option>
+              <option value="OA">OA</option>
+              <option value="Behavioral Interview">Behavioral Interview</option>
+              <option value="Technical Interview">Technical Interview</option>
+              <option value="Final Interview">Final Interview</option>
+              <option value="Offer">Offer</option>
+              <option value="Rejected">Rejected</option>
+              <option value="No Response">No Response</option>
+            </select>
+            <button 
+              onClick={() => onUpdateStatus(job._id, newStatus)}
+              style={styles.updateButton}
+            >
+              Update Status
+            </button>
           </div>
-        )}
+        </div>
+
+        <div style={styles.modalFooter}>
+          <button 
+            onClick={() => onDelete(job._id)}
+            style={styles.deleteButton}
+          >
+            🗑️ Delete Application
+          </button>
+        </div>
       </div>
     </div>
   );
+};
+
+// Styles
+const styles = {
+  loginContainer: {
+    minHeight: '100vh',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+    padding: '20px',
+  },
+  loginBox: {
+    background: 'white',
+    borderRadius: '16px',
+    padding: '40px',
+    width: '100%',
+    maxWidth: '400px',
+    boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
+  },
+  loginTitle: {
+    fontSize: '32px',
+    marginBottom: '8px',
+    color: '#1f2937',
+    textAlign: 'center',
+  },
+  loginSubtitle: {
+    color: '#6b7280',
+    textAlign: 'center',
+    marginBottom: '32px',
+  },
+  loginForm: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '16px',
+  },
+  label: {
+    fontSize: '14px',
+    fontWeight: '600',
+    color: '#374151',
+    marginBottom: '4px',
+  },
+  input: {
+    padding: '12px',
+    border: '2px solid #e5e7eb',
+    borderRadius: '8px',
+    fontSize: '14px',
+    outline: 'none',
+  },
+  loginButton: {
+    padding: '12px',
+    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+    color: 'white',
+    border: 'none',
+    borderRadius: '8px',
+    fontSize: '16px',
+    fontWeight: '600',
+    cursor: 'pointer',
+  },
+  error: {
+    color: '#ef4444',
+    fontSize: '14px',
+    padding: '8px',
+    background: '#fee2e2',
+    borderRadius: '6px',
+  },
+  loginFooter: {
+    marginTop: '24px',
+    textAlign: 'center',
+  },
+  footerText: {
+    fontSize: '12px',
+    color: '#9ca3af',
+  },
+  container: {
+    minHeight: '100vh',
+    background: '#f9fafb',
+  },
+  header: {
+    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+    color: 'white',
+    padding: '24px',
+    boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+  },
+  headerContent: {
+    maxWidth: '1400px',
+    margin: '0 auto',
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  headerLeft: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '20px',
+  },
+  logoArea: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '16px',
+  },
+  logo: {
+    fontSize: '40px',
+  },
+  titleArea: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '8px',
+  },
+  headerTitle: {
+    fontSize: '24px',
+    margin: 0,
+    fontWeight: '600',
+  },
+  tabToggle: {
+    display: 'flex',
+    gap: '8px',
+    background: 'rgba(255,255,255,0.1)',
+    padding: '4px',
+    borderRadius: '8px',
+  },
+  tabButton: {
+    padding: '6px 14px',
+    background: 'transparent',
+    border: 'none',
+    color: 'rgba(255,255,255,0.7)',
+    borderRadius: '6px',
+    cursor: 'pointer',
+    fontSize: '12px',
+    fontWeight: '500',
+    transition: 'all 0.2s',
+  },
+  tabButtonActive: {
+    background: 'white',
+    color: '#667eea',
+    fontWeight: '600',
+  },
+  headerRight: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '12px',
+  },
+  settingsBtn: {
+    padding: '8px 12px',
+    background: 'rgba(255,255,255,0.2)',
+    border: '1px solid rgba(255,255,255,0.3)',
+    color: 'white',
+    borderRadius: '6px',
+    cursor: 'pointer',
+    fontSize: '18px',
+  },
+  userBadge: {
+    padding: '8px 16px',
+    background: 'rgba(255,255,255,0.2)',
+    borderRadius: '20px',
+    fontSize: '14px',
+  },
+  logoutBtn: {
+    padding: '8px 16px',
+    background: 'rgba(255,255,255,0.2)',
+    border: '1px solid rgba(255,255,255,0.3)',
+    color: 'white',
+    borderRadius: '6px',
+    cursor: 'pointer',
+    fontSize: '14px',
+    fontWeight: '600',
+  },
+  settingsPanel: {
+    maxWidth: '1400px',
+    margin: '16px auto 0',
+    padding: '16px 20px',
+    background: 'rgba(255,255,255,0.15)',
+    borderRadius: '8px',
+    backdropFilter: 'blur(10px)',
+  },
+  settingsTitle: {
+    fontSize: '16px',
+    margin: '0 0 12px 0',
+    fontWeight: '600',
+  },
+  settingRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '12px',
+    marginBottom: '8px',
+  },
+  settingLabel: {
+    fontSize: '14px',
+    fontWeight: '500',
+  },
+  settingControl: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+  },
+  settingInput: {
+    width: '80px',
+    padding: '6px 10px',
+    border: '2px solid rgba(255,255,255,0.3)',
+    borderRadius: '6px',
+    fontSize: '14px',
+    background: 'rgba(255,255,255,0.2)',
+    color: 'white',
+    outline: 'none',
+  },
+  settingUnit: {
+    fontSize: '14px',
+    fontWeight: '500',
+  },
+  settingHint: {
+    fontSize: '12px',
+    opacity: 0.8,
+    margin: '4px 0 0 0',
+  },
+  statsGrid: {
+    maxWidth: '1400px',
+    margin: '32px auto',
+    padding: '0 24px',
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+    gap: '20px',
+  },
+  statCard: {
+    background: 'white',
+    padding: '24px',
+    borderRadius: '12px',
+    boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '16px',
+    borderLeft: '4px solid',
+  },
+  statIcon: {
+    fontSize: '32px',
+  },
+  statTitle: {
+    fontSize: '14px',
+    color: '#6b7280',
+    marginBottom: '4px',
+  },
+  statValue: {
+    fontSize: '32px',
+    fontWeight: '700',
+  },
+  controls: {
+    maxWidth: '1400px',
+    margin: '24px auto',
+    padding: '0 24px',
+    display: 'flex',
+    gap: '16px',
+    flexWrap: 'wrap',
+  },
+  searchBox: {
+    flex: '1',
+    minWidth: '300px',
+  },
+  searchInput: {
+    width: '100%',
+    padding: '12px',
+    border: '2px solid #e5e7eb',
+    borderRadius: '8px',
+    fontSize: '14px',
+    outline: 'none',
+  },
+  filters: {
+    display: 'flex',
+    gap: '12px',
+    flexWrap: 'wrap',
+  },
+  select: {
+    padding: '12px',
+    border: '2px solid #e5e7eb',
+    borderRadius: '8px',
+    fontSize: '14px',
+    background: 'white',
+    cursor: 'pointer',
+    outline: 'none',
+  },
+  sortButton: {
+    padding: '12px 16px',
+    background: 'white',
+    border: '2px solid #e5e7eb',
+    borderRadius: '8px',
+    cursor: 'pointer',
+    fontSize: '16px',
+  },
+  refreshButton: {
+    padding: '12px 20px',
+    background: '#3b82f6',
+    color: 'white',
+    border: 'none',
+    borderRadius: '8px',
+    cursor: 'pointer',
+    fontSize: '14px',
+    fontWeight: '600',
+  },
+  jobsContainer: {
+    maxWidth: '1400px',
+    margin: '0 auto',
+    padding: '0 24px 40px',
+  },
+  jobsGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))',
+    gap: '20px',
+  },
+  jobCard: {
+    background: 'white',
+    padding: '20px',
+    borderRadius: '12px',
+    boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+    cursor: 'pointer',
+    transition: 'transform 0.2s, box-shadow 0.2s',
+  },
+  jobCardHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: '12px',
+    gap: '12px',
+  },
+  jobTitle: {
+    fontSize: '18px',
+    color: '#1f2937',
+    margin: 0,
+    lineHeight: '1.3',
+    flex: 1,
+  },
+  cardActions: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+  },
+  starButton: {
+    background: 'none',
+    border: 'none',
+    fontSize: '20px',
+    cursor: 'pointer',
+    padding: '4px',
+    transition: 'transform 0.2s',
+  },
+  statusBadge: {
+    padding: '4px 12px',
+    borderRadius: '12px',
+    fontSize: '12px',
+    fontWeight: '600',
+    whiteSpace: 'nowrap',
+  },
+  jobCompany: {
+    fontSize: '14px',
+    color: '#4b5563',
+    marginBottom: '6px',
+  },
+  jobLocation: {
+    fontSize: '14px',
+    color: '#6b7280',
+    marginBottom: '6px',
+  },
+  jobSalary: {
+    fontSize: '14px',
+    color: '#10b981',
+    fontWeight: '600',
+    marginBottom: '8px',
+  },
+  jobMeta: {
+    fontSize: '12px',
+    color: '#9ca3af',
+    marginTop: '12px',
+    paddingTop: '12px',
+    borderTop: '1px solid #e5e7eb',
+  },
+  jobDate: {
+    display: 'block',
+  },
+  tags: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: '6px',
+    marginTop: '8px',
+  },
+  tag: {
+    padding: '4px 8px',
+    background: '#e0e7ff',
+    color: '#4f46e5',
+    borderRadius: '4px',
+    fontSize: '11px',
+    fontWeight: '500',
+  },
+  loading: {
+    textAlign: 'center',
+    padding: '60px',
+    fontSize: '18px',
+    color: '#6b7280',
+  },
+  emptyState: {
+    textAlign: 'center',
+    padding: '60px 20px',
+    color: '#6b7280',
+  },
+  emptyIcon: {
+    fontSize: '64px',
+    marginBottom: '16px',
+  },
+  modalOverlay: {
+    position: 'fixed',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    background: 'rgba(0,0,0,0.5)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: '20px',
+    zIndex: 1000,
+  },
+  modal: {
+    background: 'white',
+    borderRadius: '16px',
+    width: '100%',
+    maxWidth: '600px',
+    maxHeight: '90vh',
+    overflow: 'auto',
+    boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
+  },
+  modalHeader: {
+    padding: '24px',
+    borderBottom: '1px solid #e5e7eb',
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  modalTitle: {
+    fontSize: '24px',
+    color: '#1f2937',
+    margin: 0,
+  },
+  closeButton: {
+    background: 'none',
+    border: 'none',
+    fontSize: '24px',
+    cursor: 'pointer',
+    color: '#6b7280',
+    padding: '4px 8px',
+  },
+  modalBody: {
+    padding: '24px',
+  },
+  detailRow: {
+    marginBottom: '16px',
+    fontSize: '14px',
+    color: '#374151',
+  },
+  notes: {
+    marginTop: '8px',
+    padding: '12px',
+    background: '#f9fafb',
+    borderRadius: '6px',
+    fontSize: '14px',
+    lineHeight: '1.5',
+  },
+  link: {
+    color: '#3b82f6',
+    textDecoration: 'none',
+    fontWeight: '600',
+  },
+  statusUpdate: {
+    marginTop: '24px',
+    padding: '20px',
+    background: '#f9fafb',
+    borderRadius: '8px',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '12px',
+  },
+  updateButton: {
+    padding: '12px',
+    background: '#3b82f6',
+    color: 'white',
+    border: 'none',
+    borderRadius: '8px',
+    cursor: 'pointer',
+    fontSize: '14px',
+    fontWeight: '600',
+  },
+  modalFooter: {
+    padding: '16px 24px',
+    borderTop: '1px solid #e5e7eb',
+  },
+  deleteButton: {
+    padding: '10px 16px',
+    background: '#fee2e2',
+    color: '#dc2626',
+    border: 'none',
+    borderRadius: '8px',
+    cursor: 'pointer',
+    fontSize: '14px',
+    fontWeight: '600',
+  },
 };
 
 export default JobTracker;

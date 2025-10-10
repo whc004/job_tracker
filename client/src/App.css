@@ -10,72 +10,54 @@ body {
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
-  min-height: 100vh;
+  background: #f9fafb;
 }
 
 .App {
   min-height: 100vh;
 }
 
-/* Loading animation */
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+/* Hover effects for interactive elements */
+button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
 }
 
-.animate-spin {
-  animation: spin 1s linear infinite;
+button:active {
+  transform: translateY(0);
 }
 
-/* Status badge colors */
-.status-applied {
-  background-color: rgba(59, 130, 246, 0.1);
-  color: #1d4ed8;
+/* Job card hover effect */
+.job-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.15) !important;
 }
 
-.status-screening {
-  background-color: rgba(245, 158, 11, 0.1);
-  color: #d97706;
+/* Input focus effect */
+input:focus, select:focus {
+  border-color: #3b82f6 !important;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
-.status-interview {
-  background-color: rgba(139, 92, 246, 0.1);
-  color: #7c3aed;
+/* Smooth transitions */
+* {
+  transition: all 0.2s ease;
 }
 
-.status-technical {
-  background-color: rgba(249, 115, 22, 0.1);
-  color: #ea580c;
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 10px;
 }
 
-.status-final {
-  background-color: rgba(99, 102, 241, 0.1);
-  color: #4f46e5;
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
 }
 
-.status-offer {
-  background-color: rgba(16, 185, 129, 0.1);
-  color: #059669;
+::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 5px;
 }
 
-.status-rejected {
-  background-color: rgba(239, 68, 68, 0.1);
-  color: #dc2626;
-}
-
-/* Priority badge colors */
-.priority-low {
-  background-color: rgba(107, 114, 128, 0.1);
-  color: #4b5563;
-}
-
-.priority-medium {
-  background-color: rgba(59, 130, 246, 0.1);
-  color: #1d4ed8;
-}
-
-.priority-high {
-  background-color: rgba(239, 68, 68, 0.1);
-  color: #dc2626;
+::-webkit-scrollbar-thumb:hover {
+  background: #555;
 }

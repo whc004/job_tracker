@@ -130,7 +130,7 @@ class LinkedInJobExtractor {
     }
   }
 
-  // ⭐ NEW METHOD: Extract LinkedIn Job ID from URL
+  // Extract LinkedIn Job ID from URL
   extractJobId(url) {
     if (!url) return null;
     
@@ -152,7 +152,7 @@ class LinkedInJobExtractor {
     let jobUrl = this.extractJobURL(window.location.href);
     if (!jobUrl) jobUrl = window.location.href;
     
-    // ⭐ NEW: Extract LinkedIn Job ID for duplicate detection
+    // Extract LinkedIn Job ID for duplicate detection
     const linkedinJobId = this.extractJobId(jobUrl);
     console.log('LinkedIn Job ID:', linkedinJobId);
     
@@ -173,7 +173,7 @@ class LinkedInJobExtractor {
       
       // Metadata
       url: jobUrl,
-      linkedinJobId: linkedinJobId, // ⭐ NEW FIELD for duplicate detection
+      linkedinJobId: linkedinJobId, // for duplicate detection
       extractedAt: currentTimestamp,
         
       // Application tracking fields
@@ -464,7 +464,7 @@ class LinkedInJobExtractor {
         },
         body: JSON.stringify({
           userId: data.userId,
-          linkedinJobId: data.linkedinJobId, // ⭐ NEW: Send LinkedIn Job ID
+          linkedinJobId: data.linkedinJobId, // Send LinkedIn Job ID
           company: data.company,
           position: data.position,
           location: data.location,
