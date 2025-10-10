@@ -1,5 +1,0 @@
-Company,Position,Location,Date Applied,Status,Priority,Salary,Contact Person,Technical Details,Notes
-TechCorp,Frontend Developer,"San Francisco, CA",2024/1/15,Technical Interview,High,"$85,000",John Smith,"React, JavaScript, CSS","React position, looks promising"
-StartupXYZ,Full Stack Engineer,Remote,2024/1/12,Technical Interview,High,"$90,000",Sarah Johnson,"Node.js, MongoDB, AWS",Take-home coding challenge due Friday
-BigTech Inc,Software Developer,"Seattle, WA",2024/1/10,Rejected,Medium,"$95,000",Mike Davis,"Java, Spring, SQL",Position filled internally
-InnovateNow,React Developer,"Austin, TX",2024/1/8,Applied,Medium,"$80,000",Lisa Chen,"React, TypeScript, GraphQL",Interesting startup focused on AI
