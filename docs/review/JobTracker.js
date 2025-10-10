@@ -27,13 +27,6 @@ const parseSkills = (technicalDetails) => {
     .map(token => token.replace(/\b([a-z])/gi, (match) => match.toUpperCase()));
 };
 
-const INTERVIEW_STATUSES = new Set([
-  'OA',
-  'Behavioral Interview',
-  'Technical Interview',
-  'Final Interview'
-]);
-
 const JobTracker = () => {
   // State management
   const [userId, setUserId] = useState('');
@@ -216,13 +209,11 @@ const JobTracker = () => {
 
   // NEW: Toggle star/priority
   const toggleStar = async (job, e) => {
-    if (e) {
-      e.stopPropagation();
-    }
-
+    e.stopPropagation(); // Prevent opening modal
+    
     // Toggle between High and Medium priority
     const newPriority = job.priority === 'High' ? 'Medium' : 'High';
-
+    
     try {
       const response = await fetch(`${API_URL}/applications/${job._id}`, {
         method: 'PUT',
@@ -235,10 +226,9 @@ const JobTracker = () => {
 
       if (response.ok) {
         // Update local state immediately for better UX
-        setJobs(prevJobs => prevJobs.map(j =>
+        setJobs(jobs.map(j => 
           j._id === job._id ? { ...j, priority: newPriority } : j
         ));
-        setSelectedJob(prev => (prev && prev._id === job._id ? { ...prev, priority: newPriority } : prev));
       }
     } catch (err) {
       console.error('Error toggling star:', err);
@@ -297,20 +287,14 @@ const JobTracker = () => {
   // Enhanced filter - search company, position, location, AND keywords
   const filteredJobs = jobs
     .filter(job => {
-      const matchesStatus =
-        filterStatus === 'All' ||
-        job.status === filterStatus ||
-        (filterStatus === 'Interview' && INTERVIEW_STATUSES.has(job.status));
+      const matchesStatus = filterStatus === 'All' || job.status === filterStatus;
       const matchesSearch =
         job.company.toLowerCase().includes(searchLower) ||
         job.position.toLowerCase().includes(searchLower) ||
         (job.location && job.location.toLowerCase().includes(searchLower)) ||
-        (() => {
-          const skillSource = Array.isArray(job.technicalDetails)
-            ? job.technicalDetails
-            : parseSkills(job.technicalDetails);
-          return skillSource.some(tech => tech.toLowerCase().includes(searchLower));
-        })();
+        (job.technicalDetails && job.technicalDetails.some(tech =>
+          tech.toLowerCase().includes(searchLower)
+        ));
 
       const matchesCollection =
         collectionFilter === 'all' ||
@@ -457,33 +441,29 @@ const JobTracker = () => {
           {/* Stats Cards */}
           {stats && (
             <div style={styles.statsGrid}>
-              <StatCard
-                title="Total Applications"
-                value={stats.total}
+              <StatCard 
+                title="Total Applications" 
+                value={stats.total} 
                 color="#3b82f6"
                 icon="📝"
-                description="Everything you've added to your tracker."
               />
-              <StatCard
-                title="Active Opportunities"
-                value={stats.activeOpportunities}
+              <StatCard 
+                title="Active Opportunities" 
+                value={stats.activeOpportunities} 
                 color="#8b5cf6"
                 icon="🎯"
-                description="Open roles that haven't been closed or rejected."
               />
-              <StatCard
-                title="Interviews"
-                value={stats.interviewProgress}
+              <StatCard 
+                title="Interviews" 
+                value={stats.interviewProgress} 
                 color="#f59e0b"
                 icon="💼"
-                description="OA, behavioral, technical, and final stages combined."
               />
-              <StatCard
-                title="Offers"
-                value={stats.offers}
+              <StatCard 
+                title="Offers" 
+                value={stats.offers} 
                 color="#10b981"
                 icon="🎉"
-                description="Opportunities that reached an offer."
               />
             </div>
           )}
@@ -501,41 +481,32 @@ const JobTracker = () => {
             </div>
 
             <div style={styles.filters}>
-              <div style={styles.selectShell}>
-                <select
-                  value={filterStatus}
-                  onChange={(e) => setFilterStatus(e.target.value)}
-                  style={styles.select}
-                  aria-label="Filter by job status"
-                >
-                  <option value="All">All Status</option>
-                  <option value="Applied">Applied</option>
-                  <option value="Interview">Interview (OA → Final)</option>
-                  <option value="OA">OA</option>
-                  <option value="Behavioral Interview">Behavioral</option>
-                  <option value="Technical Interview">Technical</option>
-                  <option value="Final Interview">Final</option>
-                  <option value="Offer">Offer</option>
-                  <option value="Rejected">Rejected</option>
-                  <option value="No Response">No Response</option>
-                </select>
-                <span style={styles.selectChevron} aria-hidden="true">▾</span>
-              </div>
+              <select 
+                value={filterStatus} 
+                onChange={(e) => setFilterStatus(e.target.value)}
+                style={styles.select}
+              >
+                <option value="All">All Status</option>
+                <option value="Applied">Applied</option>
+                <option value="OA">OA</option>
+                <option value="Behavioral Interview">Behavioral</option>
+                <option value="Technical Interview">Technical</option>
+                <option value="Final Interview">Final</option>
+                <option value="Offer">Offer</option>
+                <option value="Rejected">Rejected</option>
+                <option value="No Response">No Response</option>
+              </select>
 
-              <div style={styles.selectShell}>
-                <select
-                  value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value)}
-                  style={styles.select}
-                  aria-label="Sort jobs by"
-                >
-                  <option value="dateApplied">Date Applied</option>
-                  <option value="createdAt">Date Saved</option>
-                  <option value="company">Company</option>
-                  <option value="position">Position</option>
-                </select>
-                <span style={styles.selectChevron} aria-hidden="true">▾</span>
-              </div>
+              <select 
+                value={sortBy} 
+                onChange={(e) => setSortBy(e.target.value)}
+                style={styles.select}
+              >
+                <option value="dateApplied">Date Applied</option>
+                <option value="createdAt">Date Saved</option>
+                <option value="company">Company</option>
+                <option value="position">Position</option>
+              </select>
 
               <button 
                 onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
@@ -551,45 +522,27 @@ const JobTracker = () => {
                 🔄 Refresh
               </button>
               <div style={styles.collectionToggles}>
-                <label
-                  style={{
-                    ...styles.checkboxLabel,
-                    ...(collectionFilter === 'favorites' ? styles.checkboxLabelActive : {})
-                  }}
-                  title="Only show starred jobs"
-                >
+                <label style={styles.checkboxLabel}>
                   <input
                     type="checkbox"
                     checked={collectionFilter === 'favorites'}
                     onChange={() =>
                       setCollectionFilter(collectionFilter === 'favorites' ? 'all' : 'favorites')
                     }
-                    style={styles.hiddenCheckbox}
+                    style={styles.checkboxInput}
                   />
-                  <span style={styles.checkboxIcon} aria-hidden="true">
-                    {collectionFilter === 'favorites' ? '⭐' : '☆'}
-                  </span>
-                  <span style={styles.srOnly}>Only collections</span>
+                  <span>Only collections</span>
                 </label>
-                <label
-                  style={{
-                    ...styles.checkboxLabel,
-                    ...(collectionFilter === 'nonFavorites' ? styles.checkboxLabelActive : {})
-                  }}
-                  title="Only show non-starred jobs"
-                >
+                <label style={styles.checkboxLabel}>
                   <input
                     type="checkbox"
                     checked={collectionFilter === 'nonFavorites'}
                     onChange={() =>
                       setCollectionFilter(collectionFilter === 'nonFavorites' ? 'all' : 'nonFavorites')
                     }
-                    style={styles.hiddenCheckbox}
+                    style={styles.checkboxInput}
                   />
-                  <span style={styles.checkboxIcon} aria-hidden="true">
-                    {collectionFilter === 'nonFavorites' ? '🚫⭐' : '☆'}
-                  </span>
-                  <span style={styles.srOnly}>Only non-collection</span>
+                  <span>Only non-collection</span>
                 </label>
               </div>
             </div>
@@ -618,6 +571,7 @@ const JobTracker = () => {
                     job={job}
                     onClick={() => setSelectedJob(job)}
                     onToggleStar={(e) => toggleStar(job, e)}
+                    inCollection={isCollectionJob(job)}
                   />
                 ))}
               </div>
@@ -642,7 +596,6 @@ const JobTracker = () => {
           onUpdateStatus={updateJobStatus}
           onDelete={deleteJob}
           onSave={handleSaveJobDetails}
-          onToggleFavorite={toggleStar}
         />
       )}
 
@@ -663,19 +616,18 @@ const JobTracker = () => {
 };
 
 // Components
-const StatCard = ({ title, value, color, icon, description }) => (
-  <div style={{ ...styles.statCard, borderLeftColor: color }}>
+const StatCard = ({ title, value, color, icon }) => (
+  <div style={{...styles.statCard, borderLeftColor: color}}>
     <div style={styles.statIcon}>{icon}</div>
-    <div style={styles.statContent}>
+    <div>
       <div style={styles.statTitle}>{title}</div>
-      <div style={{ ...styles.statValue, color }}>{value}</div>
-      {description && <p style={styles.statDescription}>{description}</p>}
+      <div style={{...styles.statValue, color}}>{value}</div>
     </div>
   </div>
 );
 
 // NEW: JobCard with Star Button
-const JobCard = ({ job, onClick, onToggleStar }) => {
+const JobCard = ({ job, onClick, onToggleStar, inCollection }) => {
   const statusColors = {
     'Applied': '#3b82f6',
     'OA': '#f59e0b',
@@ -687,7 +639,7 @@ const JobCard = ({ job, onClick, onToggleStar }) => {
     'No Response': '#6b7280'
   };
 
-  const isStarred = isCollectionJob(job);
+  const isStarred = job.priority === 'High' || job.priority === 'Dream Job';
   const displaySkills = parseSkills(job.technicalDetails);
 
   return (
@@ -695,14 +647,14 @@ const JobCard = ({ job, onClick, onToggleStar }) => {
       <div style={styles.jobCardHeader}>
         <h3 style={styles.jobTitle}>{job.position}</h3>
         <div style={styles.cardActions}>
+          {inCollection && <span style={styles.collectionBadge}>📁 Collection</span>}
           <button
             onClick={onToggleStar}
             style={{
               ...styles.starButton,
-              ...(isStarred ? styles.starButtonActive : {}),
+              color: isStarred ? '#f59e0b' : '#d1d5db'
             }}
-            aria-pressed={isStarred}
-            title={isStarred ? 'Remove star' : 'Add star'}
+            title={isStarred ? 'Remove from favorites' : 'Add to favorites'}
           >
             {isStarred ? '⭐' : '☆'}
           </button>
@@ -804,7 +756,7 @@ const SettingsModal = ({ noResponseDays, onClose, onChangeDays }) => {
   );
 };
 
-const JobDetailModal = ({ job, onClose, onUpdateStatus, onDelete, onSave, onToggleFavorite }) => {
+const JobDetailModal = ({ job, onClose, onUpdateStatus, onDelete, onSave }) => {
   const buildFormState = (currentJob) => ({
     position: currentJob.position || '',
     company: currentJob.company || '',
@@ -832,7 +784,6 @@ const JobDetailModal = ({ job, onClose, onUpdateStatus, onDelete, onSave, onTogg
   }, [job]);
 
   const displaySkills = parseSkills(job.technicalDetails);
-  const isStarred = isCollectionJob(job);
 
   const handleChange = (field, value) => {
     setFormState(prev => ({ ...prev, [field]: value }));
@@ -871,21 +822,7 @@ const JobDetailModal = ({ job, onClose, onUpdateStatus, onDelete, onSave, onTogg
     <div style={styles.modalOverlay} onClick={onClose}>
       <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
         <div style={styles.modalHeader}>
-          <div style={styles.modalTitleGroup}>
-            <h2 style={styles.modalTitle}>{job.position}</h2>
-            <button
-              onClick={() => onToggleFavorite(job)}
-              style={{
-                ...styles.starButton,
-                ...(isStarred ? styles.starButtonActive : {}),
-                ...styles.modalStarButton,
-              }}
-              aria-pressed={isStarred}
-              title={isStarred ? 'Remove star' : 'Add star'}
-            >
-              {isStarred ? '⭐' : '☆'}
-            </button>
-          </div>
+          <h2 style={styles.modalTitle}>{job.position}</h2>
           <button onClick={onClose} style={styles.closeButton}>✕</button>
         </div>
 
@@ -943,24 +880,20 @@ const JobDetailModal = ({ job, onClose, onUpdateStatus, onDelete, onSave, onTogg
               <div style={styles.statusUpdate}>
                 <label style={styles.label}>Quick Status Update:</label>
                 <div style={styles.inlineStatus}>
-                  <div style={styles.selectShell}>
-                    <select
-                      value={job.status}
-                      onChange={(e) => onUpdateStatus(job._id, e.target.value)}
-                      style={styles.select}
-                      aria-label="Update job status"
-                    >
-                      <option value="Applied">Applied</option>
-                      <option value="OA">OA</option>
-                      <option value="Behavioral Interview">Behavioral Interview</option>
-                      <option value="Technical Interview">Technical Interview</option>
-                      <option value="Final Interview">Final Interview</option>
-                      <option value="Offer">Offer</option>
-                      <option value="Rejected">Rejected</option>
-                      <option value="No Response">No Response</option>
-                    </select>
-                    <span style={styles.selectChevron} aria-hidden="true">▾</span>
-                  </div>
+                  <select
+                    value={job.status}
+                    onChange={(e) => onUpdateStatus(job._id, e.target.value)}
+                    style={styles.select}
+                  >
+                    <option value="Applied">Applied</option>
+                    <option value="OA">OA</option>
+                    <option value="Behavioral Interview">Behavioral Interview</option>
+                    <option value="Technical Interview">Technical Interview</option>
+                    <option value="Final Interview">Final Interview</option>
+                    <option value="Offer">Offer</option>
+                    <option value="Rejected">Rejected</option>
+                    <option value="No Response">No Response</option>
+                  </select>
                   <button
                     onClick={() => setIsEditing(true)}
                     style={styles.editButton}
@@ -1038,41 +971,33 @@ const JobDetailModal = ({ job, onClose, onUpdateStatus, onDelete, onSave, onTogg
                 </label>
                 <label style={styles.editField}>
                   <span>Priority</span>
-                  <div style={styles.selectShell}>
-                    <select
-                      value={formState.priority}
-                      onChange={(e) => handleChange('priority', e.target.value)}
-                      style={styles.select}
-                      aria-label="Select job priority"
-                    >
-                      <option value="Low">Low</option>
-                      <option value="Medium">Medium</option>
-                      <option value="High">High</option>
-                      <option value="Dream Job">Dream Job</option>
-                    </select>
-                    <span style={styles.selectChevron} aria-hidden="true">▾</span>
-                  </div>
+                  <select
+                    value={formState.priority}
+                    onChange={(e) => handleChange('priority', e.target.value)}
+                    style={styles.select}
+                  >
+                    <option value="Low">Low</option>
+                    <option value="Medium">Medium</option>
+                    <option value="High">High</option>
+                    <option value="Dream Job">Dream Job</option>
+                  </select>
                 </label>
                 <label style={styles.editField}>
                   <span>Status</span>
-                  <div style={styles.selectShell}>
-                    <select
-                      value={formState.status}
-                      onChange={(e) => handleChange('status', e.target.value)}
-                      style={styles.select}
-                      aria-label="Select job status"
-                    >
-                      <option value="Applied">Applied</option>
-                      <option value="OA">OA</option>
-                      <option value="Behavioral Interview">Behavioral Interview</option>
-                      <option value="Technical Interview">Technical Interview</option>
-                      <option value="Final Interview">Final Interview</option>
-                      <option value="Offer">Offer</option>
-                      <option value="Rejected">Rejected</option>
-                      <option value="No Response">No Response</option>
-                    </select>
-                    <span style={styles.selectChevron} aria-hidden="true">▾</span>
-                  </div>
+                  <select
+                    value={formState.status}
+                    onChange={(e) => handleChange('status', e.target.value)}
+                    style={styles.select}
+                  >
+                    <option value="Applied">Applied</option>
+                    <option value="OA">OA</option>
+                    <option value="Behavioral Interview">Behavioral Interview</option>
+                    <option value="Technical Interview">Technical Interview</option>
+                    <option value="Final Interview">Final Interview</option>
+                    <option value="Offer">Offer</option>
+                    <option value="Rejected">Rejected</option>
+                    <option value="No Response">No Response</option>
+                  </select>
                 </label>
                 <label style={styles.editField}>
                   <span>Date Applied</span>
@@ -1430,11 +1355,6 @@ const styles = {
   statIcon: {
     fontSize: '32px',
   },
-  statContent: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '4px',
-  },
   statTitle: {
     fontSize: '15px',
     color: '#6b7280',
@@ -1443,11 +1363,6 @@ const styles = {
   statValue: {
     fontSize: '32px',
     fontWeight: '700',
-  },
-  statDescription: {
-    fontSize: '13px',
-    color: '#4b5563',
-    margin: 0,
   },
   controls: {
     maxWidth: '1400px',
@@ -1473,42 +1388,6 @@ const styles = {
     display: 'flex',
     gap: '12px',
     flexWrap: 'wrap',
-    alignItems: 'stretch',
-  },
-  selectShell: {
-    position: 'relative',
-    display: 'flex',
-    alignItems: 'center',
-    background: 'linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(241,245,249,0.9) 100%)',
-    borderRadius: '18px',
-    boxShadow: '0 16px 40px rgba(15,23,42,0.14)',
-    minWidth: '170px',
-    padding: '2px 4px',
-    border: '1px solid rgba(148,163,184,0.25)',
-    backdropFilter: 'blur(18px)',
-  },
-  select: {
-    appearance: 'none',
-    WebkitAppearance: 'none',
-    MozAppearance: 'none',
-    padding: '12px 44px 12px 18px',
-    border: 'none',
-    borderRadius: '16px',
-    fontSize: '15px',
-    fontWeight: 500,
-    background: 'transparent',
-    color: '#0f172a',
-    width: '100%',
-    cursor: 'pointer',
-    outline: 'none',
-    transition: 'border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease',
-  },
-  selectChevron: {
-    position: 'absolute',
-    right: '16px',
-    pointerEvents: 'none',
-    color: '#475569',
-    fontSize: '14px',
   },
   collectionToggles: {
     display: 'flex',
@@ -1517,48 +1396,29 @@ const styles = {
     flexWrap: 'wrap',
   },
   checkboxLabel: {
-    position: 'relative',
     display: 'flex',
     alignItems: 'center',
     gap: '6px',
-    padding: '10px 14px',
-    background: 'rgba(248,250,252,0.95)',
-    borderRadius: '14px',
+    padding: '6px 10px',
+    background: '#f3f4f6',
+    borderRadius: '10px',
     fontSize: '13px',
-    color: '#1f2937',
+    color: '#374151',
     cursor: 'pointer',
-    border: '1px solid rgba(148,163,184,0.25)',
-    boxShadow: '0 10px 28px rgba(15,23,42,0.08)',
-    transition: 'transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease',
   },
-  checkboxLabelActive: {
-    borderColor: '#2563eb',
-    boxShadow: '0 14px 36px rgba(37,99,235,0.25)',
-    background: 'linear-gradient(135deg, rgba(219,234,254,0.95) 0%, rgba(191,219,254,0.9) 100%)',
+  checkboxInput: {
+    width: '16px',
+    height: '16px',
+    accentColor: '#2563eb',
   },
-  hiddenCheckbox: {
-    position: 'absolute',
-    opacity: 0,
-    pointerEvents: 'none',
-  },
-  checkboxIcon: {
-    fontSize: '18px',
-    lineHeight: 1,
-    minWidth: '24px',
-    display: 'inline-flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  srOnly: {
-    position: 'absolute',
-    width: '1px',
-    height: '1px',
-    padding: 0,
-    margin: '-1px',
-    overflow: 'hidden',
-    clip: 'rect(0, 0, 0, 0)',
-    whiteSpace: 'nowrap',
-    border: 0,
+  select: {
+    padding: '12px 14px',
+    border: '2px solid #d1d5db',
+    borderRadius: '12px',
+    fontSize: '15px',
+    background: 'white',
+    cursor: 'pointer',
+    outline: 'none',
   },
   sortButton: {
     padding: '12px 16px',
@@ -1616,21 +1476,21 @@ const styles = {
     alignItems: 'center',
     gap: '8px',
   },
+  collectionBadge: {
+    background: '#fef3c7',
+    color: '#b45309',
+    fontSize: '11px',
+    fontWeight: '600',
+    padding: '4px 8px',
+    borderRadius: '999px',
+  },
   starButton: {
-    background: 'linear-gradient(135deg, rgba(255,255,255,0.9) 0%, rgba(226,232,240,0.9) 100%)',
-    border: '1px solid rgba(148,163,184,0.35)',
+    background: 'none',
+    border: 'none',
     fontSize: '20px',
     cursor: 'pointer',
-    padding: '6px 10px',
-    transition: 'transform 0.2s, box-shadow 0.2s, border-color 0.2s',
-    borderRadius: '999px',
-    color: '#d1d5db',
-  },
-  starButtonActive: {
-    color: '#f59e0b',
-    borderColor: 'rgba(245, 158, 11, 0.55)',
-    boxShadow: '0 10px 24px rgba(245, 158, 11, 0.25)',
-    background: 'linear-gradient(135deg, rgba(254, 243, 199, 0.95) 0%, rgba(253, 230, 138, 0.9) 100%)',
+    padding: '4px',
+    transition: 'transform 0.2s',
   },
   statusBadge: {
     padding: '4px 12px',
@@ -1723,18 +1583,10 @@ const styles = {
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  modalTitleGroup: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '12px',
-  },
   modalTitle: {
     fontSize: '24px',
     color: '#1f2937',
     margin: 0,
-  },
-  modalStarButton: {
-    paddingInline: '10px',
   },
   closeButton: {
     background: 'none',

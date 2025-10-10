@@ -1,14 +1,5 @@
 import React, { useState } from 'react';
 
-const INTERVIEW_STATUSES = new Set([
-  'OA',
-  'Behavioral Interview',
-  'Technical Interview',
-  'Final Interview',
-]);
-
-const mapStatus = (status) => (INTERVIEW_STATUSES.has(status) ? 'Interview' : status);
-
 const Analytics = ({ jobs, stats, filteredJobs = [], activeFilter, searchTerm }) => {
   const [chartType, setChartType] = useState('bar');
   const [xAxis, setXAxis] = useState('status');
@@ -26,8 +17,7 @@ const Analytics = ({ jobs, stats, filteredJobs = [], activeFilter, searchTerm })
     if (xAxis === 'status') {
       const statusCounts = {};
       sourceJobs.forEach(job => {
-        const label = mapStatus(job.status);
-        statusCounts[label] = (statusCounts[label] || 0) + 1;
+        statusCounts[job.status] = (statusCounts[job.status] || 0) + 1;
       });
       return Object.entries(statusCounts).map(([key, value]) => ({ label: key, value }));
     } else if (xAxis === 'company') {
@@ -57,7 +47,6 @@ const Analytics = ({ jobs, stats, filteredJobs = [], activeFilter, searchTerm })
   const averageValue = hasData
     ? (chartData.reduce((sum, d) => sum + d.value, 0) / chartData.length).toFixed(1)
     : '—';
-  const filterLabel = activeFilter === 'Interview' ? 'Interview (OA → Final)' : (activeFilter || 'All');
 
   return (
     <div style={styles.analyticsContainer}>
@@ -93,7 +82,7 @@ const Analytics = ({ jobs, stats, filteredJobs = [], activeFilter, searchTerm })
             {dataScope === 'filtered' && (
               <>
                 <span style={styles.scopeBadge}>
-                  Status: {filterLabel}
+                  Status: {activeFilter || 'All'}
                 </span>
                 {searchTerm && searchTerm.trim().length > 0 && (
                   <span style={styles.scopeBadge}>
@@ -116,48 +105,39 @@ const Analytics = ({ jobs, stats, filteredJobs = [], activeFilter, searchTerm })
         <div style={styles.chartControls}>
           <div style={styles.controlGroup}>
             <label style={styles.controlLabel}>Chart Type:</label>
-            <div style={styles.controlSelectShell}>
-              <select
-                value={chartType}
-                onChange={(e) => setChartType(e.target.value)}
-                style={styles.select}
-              >
-                <option value="bar">Bar Chart</option>
-                <option value="pie">Pie Chart</option>
-                <option value="line">Line Chart</option>
-              </select>
-              <span style={styles.selectChevron} aria-hidden="true">▾</span>
-            </div>
+            <select
+              value={chartType}
+              onChange={(e) => setChartType(e.target.value)}
+              style={styles.select}
+            >
+              <option value="bar">Bar Chart</option>
+              <option value="pie">Pie Chart</option>
+              <option value="line">Line Chart</option>
+            </select>
           </div>
 
           <div style={styles.controlGroup}>
             <label style={styles.controlLabel}>X-Axis:</label>
-            <div style={styles.controlSelectShell}>
-              <select
-                value={xAxis}
-                onChange={(e) => setXAxis(e.target.value)}
-                style={styles.select}
-              >
-                <option value="status">Status</option>
-                <option value="company">Company (Top 10)</option>
-                <option value="month">Month</option>
-              </select>
-              <span style={styles.selectChevron} aria-hidden="true">▾</span>
-            </div>
+            <select 
+              value={xAxis}
+              onChange={(e) => setXAxis(e.target.value)}
+              style={styles.select}
+            >
+              <option value="status">Status</option>
+              <option value="company">Company (Top 10)</option>
+              <option value="month">Month</option>
+            </select>
           </div>
 
           <div style={styles.controlGroup}>
             <label style={styles.controlLabel}>Y-Axis:</label>
-            <div style={styles.controlSelectShell}>
-              <select
-                value={yAxis}
-                onChange={(e) => setYAxis(e.target.value)}
-                style={styles.select}
-              >
-                <option value="count">Count</option>
-              </select>
-              <span style={styles.selectChevron} aria-hidden="true">▾</span>
-            </div>
+            <select 
+              value={yAxis}
+              onChange={(e) => setYAxis(e.target.value)}
+              style={styles.select}
+            >
+              <option value="count">Count</option>
+            </select>
           </div>
         </div>
       </div>
@@ -365,7 +345,6 @@ const LineChart = ({ data }) => {
 const getStatusColor = (status) => {
   const colors = {
     'Applied': '#3b82f6',
-    'Interview': '#f59e0b',
     'OA': '#f59e0b',
     'Behavioral Interview': '#8b5cf6',
     'Technical Interview': '#f97316',
@@ -458,37 +437,14 @@ const styles = {
     fontWeight: '600',
     color: '#374151',
   },
-  controlSelectShell: {
-    position: 'relative',
-    display: 'flex',
-    alignItems: 'center',
-    background: 'linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(241,245,249,0.9) 100%)',
-    borderRadius: '16px',
-    boxShadow: '0 12px 32px rgba(15,23,42,0.12)',
-    border: '1px solid rgba(148,163,184,0.25)',
-    padding: '2px 4px',
-    backdropFilter: 'blur(16px)',
-  },
   select: {
-    appearance: 'none',
-    WebkitAppearance: 'none',
-    MozAppearance: 'none',
-    padding: '12px 42px 12px 16px',
-    border: 'none',
-    borderRadius: '14px',
+    padding: '12px',
+    border: '2px solid #e5e7eb',
+    borderRadius: '8px',
     fontSize: '14px',
-    background: 'transparent',
+    background: 'white',
     cursor: 'pointer',
     outline: 'none',
-    color: '#1f2937',
-    fontWeight: '500',
-  },
-  selectChevron: {
-    position: 'absolute',
-    right: '14px',
-    color: '#475569',
-    fontSize: '14px',
-    pointerEvents: 'none',
   },
   chartContainer: {
     background: 'white',
