@@ -80,8 +80,25 @@ class LinkedInJobExtractor {
   setupExtractor() {
     console.log('Setting up extractor...');
     
-    // Add button with delay to ensure page is loaded
-    setTimeout(() => this.addExtractButton(), 500);
+    // Retry adding button multiple times with increasing delays
+    const retryAddButton = (attempt = 1, maxAttempts = 5) => {
+      const delay = attempt * 500; // 500ms, 1000ms, 1500ms, etc.
+      
+      setTimeout(() => {
+        const success = this.addExtractButton();
+        
+        if (!success && attempt < maxAttempts) {
+          console.log(`Button add attempt ${attempt} failed, retrying...`);
+          retryAddButton(attempt + 1, maxAttempts);
+        } else if (success) {
+          console.log('✅ Button successfully added');
+        } else {
+          console.log('⚠️ Failed to add button after all attempts');
+        }
+      }, delay);
+    };
+    
+    retryAddButton();
     
     // Set up observers for dynamic content
     this.observeJobSelection();
@@ -91,11 +108,19 @@ class LinkedInJobExtractor {
   }
 
   addExtractButton() {
+    // Check if button already exists - don't recreate it
     const existingButton = document.getElementById('job-tracker-extract-btn');
-    if (existingButton) existingButton.remove();
+    if (existingButton) {
+      console.log('⏭️ Button already exists, skipping...');
+      return true; // Button exists, success
+    }
 
+    // Try multiple possible container locations
     const saveButton = document.querySelector('.jobs-save-button');
-    if (!saveButton) return;
+    if (!saveButton) {
+      console.log('⚠️ Save button not found, will retry...');
+      return false; // Indicate failure
+    }
     
     const button = document.createElement('button');
     button.id = 'job-tracker-extract-btn';
@@ -114,20 +139,37 @@ class LinkedInJobExtractor {
       display: inline-block !important;
       vertical-align: middle !important;
       box-sizing: border-box !important;
+      cursor: pointer !important;
+      transition: opacity 0.2s ease !important;
     `;
+    
+    // Add hover effect
+    button.onmouseenter = () => button.style.opacity = '0.9';
+    button.onmouseleave = () => button.style.opacity = '1';
     
     button.addEventListener('click', () => this.extractAndSave());
     
-    // Find the .display-flex parent and insert AFTER it, not inside it
+    // Strategy 1: Try to insert after the flex container
     const displayFlexContainer = saveButton.closest('.display-flex');
     if (displayFlexContainer && displayFlexContainer.parentElement) {
-      // Insert after the entire flex container
       displayFlexContainer.insertAdjacentElement('afterend', button);
-      console.log('Button added after flex container');
-    } else {
-      // Fallback
-      saveButton.parentElement.appendChild(button);
+      console.log('✅ Button added successfully');
+      return true;
     }
+    
+    // Strategy 2: Insert in the same parent as save button
+    const saveButtonParent = saveButton.parentElement;
+    if (saveButtonParent) {
+      const wrapper = document.createElement('div');
+      wrapper.style.cssText = 'display: inline-block; margin-left: 8px;';
+      wrapper.appendChild(button);
+      saveButtonParent.appendChild(wrapper);
+      console.log('✅ Button added (fallback method)');
+      return true;
+    }
+    
+    console.log('❌ Could not find container for button');
+    return false;
   }
 
   // Extract LinkedIn Job ID from URL
@@ -556,20 +598,81 @@ class LinkedInJobExtractor {
   }
 
   observeJobSelection() {
-    const observer = new MutationObserver(() => {
-      const jobDetails = document.querySelector('.jobs-search__job-details--container, .job-details-jobs-unified-top-card__container');
-      if (jobDetails) {
-        setTimeout(() => {
+    let debounceTimer = null;
+    let lastJobUrl = window.location.href;
+    let isProcessing = false; // Prevent overlapping updates
+    
+    const observer = new MutationObserver((mutations) => {
+      // Skip if already processing
+      if (isProcessing) return;
+      
+      // Only react to significant changes
+      const hasSignificantChange = mutations.some(mutation => {
+        // Check if save button or job details container was added
+        if (mutation.addedNodes.length > 0) {
+          for (let node of mutation.addedNodes) {
+            if (node.nodeType === 1) { // Element node
+              if (node.classList?.contains('jobs-save-button') ||
+                  node.classList?.contains('jobs-search__job-details--container') ||
+                  node.classList?.contains('job-details-jobs-unified-top-card__container') ||
+                  node.querySelector?.('.jobs-save-button')) {
+                return true;
+              }
+            }
+          }
+        }
+        return false;
+      });
+      
+      const currentUrl = window.location.href;
+      const urlChanged = currentUrl !== lastJobUrl;
+      
+      // Exit early if no relevant changes
+      if (!hasSignificantChange && !urlChanged) {
+        return;
+      }
+      
+      if (urlChanged) {
+        lastJobUrl = currentUrl;
+        console.log('🔄 URL changed:', currentUrl);
+      }
+      
+      // Clear any pending updates
+      clearTimeout(debounceTimer);
+      
+      debounceTimer = setTimeout(() => {
+        isProcessing = true;
+        
+        const saveButton = document.querySelector('.jobs-save-button');
+        const existingButton = document.getElementById('job-tracker-extract-btn');
+        
+        // Only add button if:
+        // 1. Save button exists
+        // 2. Our button doesn't exist yet
+        if (saveButton && !existingButton) {
+          console.log('➕ Adding button to new job...');
           this.addExtractButton();
           this.extractJobData();
-        }, 300);
-      }
+        } else if (existingButton && !saveButton) {
+          // Remove our button if save button is gone
+          console.log('🗑️ Removing orphaned button...');
+          existingButton.remove();
+        }
+        
+        isProcessing = false;
+      }, 200); // Balanced debounce time
     });
 
-    observer.observe(document.body, {
+    // Start observing
+    const targetNode = document.querySelector('.jobs-search__job-details--container') || document.body;
+    
+    observer.observe(targetNode, {
       childList: true,
-      subtree: true
+      subtree: true,
+      attributes: false // Ignore attribute changes
     });
+    
+    console.log('✅ Observer initialized');
   }
 }
 
