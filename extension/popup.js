@@ -39,14 +39,14 @@ function showSetupScreen() {
                 <strong>Welcome to Job Tracker!</strong><br><br>
                 To use this extension, you need a User ID from the developer.<br><br>
                 <strong>How to get your User ID:</strong><br>
-                1. Email: your-email@example.com<br>
-                2. Request access to Job Tracker<br>
-                3. You'll receive your unique User ID
+                1. Email: vincent0109ccc@gmail.com<br>
+                2. Request access to Job Tracker and send the user-id<br>
+                3. I'll add you in the user list
             </div>
             
             <div style="margin-bottom: 15px;">
                 <label style="display: block; margin-bottom: 5px; font-weight: 500;">Enter Your User ID:</label>
-                <input type="text" id="userIdInput" placeholder="job-tracker_yourname" 
+                <input type="text" id="userIdInput" placeholder="User-ID" 
                        style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
             </div>
             

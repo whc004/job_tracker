@@ -40,6 +40,25 @@ const TECHNICAL_TERMS = [
   'Figma', 'Sketch', 'Adobe XD', 'Photoshop', 'Illustrator', 'InVision'
 ];
 
+(function() {
+  let lastUrl = location.href;
+  
+  // Check for URL changes every 500ms
+  setInterval(() => {
+    if (location.href !== lastUrl) {
+      lastUrl = location.href;
+      console.log('🔄 URL changed:', lastUrl);
+      
+      // Wait a bit for LinkedIn to load content, then try adding button
+      setTimeout(() => {
+        if (window.jobExtractor) {
+          window.jobExtractor.waitForSaveButton();
+        }
+      }, 1000);
+    }
+  }, 500);
+})();
+
 class LinkedInJobExtractor {
   constructor() {
     this.jobData = {};
@@ -76,6 +95,28 @@ class LinkedInJobExtractor {
       });
     });
   }
+
+  waitForSaveButton(maxAttempts = 15) {
+  let attempts = 0;
+  
+  const checkForButton = () => {
+    attempts++;
+    const saveButton = document.querySelector('.jobs-save-button');
+    const existingButton = document.getElementById('job-tracker-extract-btn');
+    
+    if (saveButton && !existingButton) {
+      console.log(`✅ Found save button on attempt ${attempts}`);
+      this.addExtractButton();
+      return;
+    }
+    
+    if (attempts < maxAttempts) {
+      setTimeout(checkForButton, 500);
+    }
+  };
+  
+  checkForButton();
+}
 
   setupExtractor() {
     console.log('Setting up extractor...');
