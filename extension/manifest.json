@@ -1,24 +1,14 @@
 {
   "manifest_version": 3,
   "name": "LinkedIn Job Tracker",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "description": "Track and save LinkedIn job applications",
-  "permissions": [
-    "storage",
-    "activeTab",
-    "scripting"
-  ],
-  "host_permissions": [
-    "*://*.linkedin.com/*"
-  ],
+  "permissions": ["storage"],
+  "host_permissions": ["*://*.linkedin.com/*"],
   "content_scripts": [
     {
-      "matches": [
-        "*://*.linkedin.com/*"
-      ],
-      "js": [
-        "content.js"
-      ],
+      "matches": ["*://*.linkedin.com/*"],
+      "js": ["content.js"],
       "run_at": "document_idle"
     }
   ],
