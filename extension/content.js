@@ -239,7 +239,7 @@ class LinkedInJobExtractor {
     const linkedinJobId = this.extractJobId(jobUrl);
     console.log('LinkedIn Job ID:', linkedinJobId);
     
-    const currentTimestamp = new Date().toISOString();
+    const currentTimestamp = new Date().toLocaleString();
     
     const data = {
       // Core job information
