@@ -3,42 +3,6 @@ console.log('Job Tracker content script loading...');
 
 // global variable for common keyword
 const API_URL = 'https://jobtracker-production-2ed3.up.railway.app/api/applications';
-const TECHNICAL_TERMS = [
-  // Programming Languages
-  'JavaScript', 'TypeScript', 'Python', 'Java', 'C\\+\\+', 'C#', 'Go', 'Rust', 'Ruby', 'PHP', 
-  'Swift', 'Kotlin', 'Scala', 'R', 'MATLAB', 'Perl', 'Objective-C', 'Dart', 'Elixir',
-  
-  // Frontend
-  'React', 'Angular', 'Vue', 'Svelte', 'Next\\.js', 'Nuxt', 'HTML', 'CSS', 'SASS', 'SCSS', 
-  'Tailwind', 'Bootstrap', 'jQuery', 'Webpack', 'Vite', 'Babel', 'Redux', 'MobX',
-  
-  // Backend/Frameworks
-  'Node\\.js', 'Express', 'Django', 'Flask', 'FastAPI', 'Spring', 'ASP\\.NET', 'Rails', 
-  'Laravel', 'NestJS', 'Gin', 'Fiber',
-  
-  // Databases
-  'SQL', 'PostgreSQL', 'MySQL', 'MongoDB', 'Redis', 'Elasticsearch', 'Cassandra', 
-  'DynamoDB', 'Oracle', 'SQLite', 'MariaDB', 'Neo4j', 'Snowflake',
-  
-  // Cloud/DevOps
-  'AWS', 'Azure', 'GCP', 'Docker', 'Kubernetes', 'Jenkins', 'GitLab', 'CircleCI', 
-  'Terraform', 'Ansible', 'CI/CD', 'DevOps', 'Prometheus', 'Grafana', 'ELK',
-  
-  // Data Science/ML
-  'TensorFlow', 'PyTorch', 'Scikit-learn', 'Pandas', 'NumPy', 'Keras', 'Spark', 
-  'Hadoop', 'Airflow', 'Tableau', 'Power BI', 'Machine Learning', 'Deep Learning',
-  'AI', 'Data Science', 'NLP', 'Computer Vision',
-  
-  // Mobile
-  'iOS', 'Android', 'React Native', 'Flutter', 'SwiftUI', 'Jetpack Compose',
-  
-  // Tools & Practices
-  'Git', 'GitHub', 'Jira', 'Confluence', 'Agile', 'Scrum', 'Kanban', 'API', 'REST', 
-  'GraphQL', 'gRPC', 'Microservices', 'Linux', 'Bash', 'Shell',
-  
-  // Design
-  'Figma', 'Sketch', 'Adobe XD', 'Photoshop', 'Illustrator', 'InVision'
-];
 
 (function() {
   let lastUrl = location.href;
@@ -260,10 +224,10 @@ class LinkedInJobExtractor {
       extractedAt: currentTimestamp,
         
       // Application tracking fields
-      applicationStatus: 'Applied',
-      applicationDate: new Date().toISOString().split('T')[0],
+      applicationStatus: window.JobTrackerConstants.JOB_STATUS.APPLIED,
+      applicationDate: new Date().toISOString(),
       notes: '',
-      priority: 'medium',
+      priority: window.JobTrackerConstants.PRIORITY_LEVELS.NORMAL,
       
       // User identification
       userId: this.userId
@@ -553,10 +517,10 @@ class LinkedInJobExtractor {
           location: data.location,
           salary: data.salary,
           jobUrl: data.url,
-          status: data.applicationStatus || 'Applied',
+          status: data.applicationStatus || window.JobTrackerConstants.JOB_STATUS.APPLIED,
           dateApplied: data.applicationDate,
           notes: data.notes || '',
-          priority: data.priority?.charAt(0).toUpperCase() + data.priority?.slice(1) || 'Medium',
+          priority: data.priority || window.JobTrackerConstants.PRIORITY_LEVELS.NORMAL,
           technicalDetails: data.keywords || [],
           jobType: data.jobType,
           experienceLevel: data.experienceLevel,

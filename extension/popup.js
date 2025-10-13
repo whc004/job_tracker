@@ -247,7 +247,7 @@ async function syncWithServer(userId) {
             console.log('📥 Fetching recent jobs...');
             const recentJobs = await fetchRecentJobs(userId, 3);
             console.log('✅ Recent jobs received:', recentJobs.length, 'jobs');
-            renderRecentJobs(stats.total, recentJobs);
+            renderRecentJobs(stats.total, recentJobs, userId);
         }
         
     } catch (error) {
@@ -290,8 +290,7 @@ function setupEventListeners(userId) {
     const dashboardBtn = document.getElementById('openDashboard');
     if (dashboardBtn) {
         dashboardBtn.addEventListener('click', function() {
-            // TODO: Replace with your actual dashboard URL
-            const dashboardUrl = `https://your-dashboard.railway.app?userId=${userId}`;
+            const dashboardUrl = `${window.JobTrackerConstants.DASHBOARD_URL}?userId=${userId}`;
             chrome.tabs.create({ url: dashboardUrl });
             window.close();
         });
@@ -438,7 +437,7 @@ function renderInstructions() {
     `;
 }
 
-function renderRecentJobs(totalCount, jobs) {
+function renderRecentJobs(totalCount, jobs, userId) {
     const dynamicContent = document.getElementById('dynamicContent');
     if (!dynamicContent) return;
     
@@ -482,7 +481,9 @@ function renderRecentJobs(totalCount, jobs) {
     const viewAllBtn = document.getElementById('viewAllBtn');
     if (viewAllBtn) {
         viewAllBtn.addEventListener('click', function() {
-            document.getElementById('openDashboard').click();
+            const dashboardUrl = `${window.JobTrackerConstants.DASHBOARD_URL}?userId=${userId}`;
+            chrome.tabs.create({ url: dashboardUrl });
+            window.close();
         });
     }
 }
@@ -500,15 +501,12 @@ function createJobCard(job) {
     const appliedDateStr = appliedDate.toLocaleDateString();
     
     card.innerHTML = `
-        <div style="font-weight: 600; color: #333; font-size: 13px; margin-bottom: 4px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
+        <div style="font-weight: 600; color: #333; font-size: 14px; margin-bottom: 6px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.4;">
             ${job.position}
         </div>
-        <div style="display: flex; justify-content: space-between; align-items: center; font-size: 11px; margin-bottom: 2px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; font-size: 12px;">
             <span style="color: #0073b1; font-weight: 500;">${job.company}</span>
-            <span style="color: #999;">${timeAgo}</span>
-        </div>
-        <div style="font-size: 10px; color: #999;">
-            Applied: ${appliedDateStr}
+            <span style="color: #999; flex-shrink: 0; margin-left: 12px;">${timeAgo}</span>
         </div>
     `;
     
