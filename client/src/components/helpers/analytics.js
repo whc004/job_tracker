@@ -16,19 +16,23 @@ const METRIC_OPTIONS = [
   { value: 'responseRate', label: 'Response Rate' },
 ];
 
+// Helper: Check if job is starred (high priority)
 export const isStarredJob = (job) => {
+  // Check multiple possible "starred" indicators
   if (job.starred === true) return true;
   if (job.priority && (job.priority === 'High' || job.priority === 'Dream Job')) return true;
   if (job.isFavorite === true) return true;
   return false;
 };
 
+// Helper: Get start of day
 export const getStartOfDay = (dateString) => {
   const date = new Date(dateString);
   date.setHours(0, 0, 0, 0);
   return date;
 };
 
+// Helper: Format day label
 export const formatDayLabel = (timestamp) => {
   const date = new Date(timestamp);
   const month = date.toLocaleDateString('en-US', { month: 'short' });
@@ -36,6 +40,7 @@ export const formatDayLabel = (timestamp) => {
   return `${month} ${day}`;
 };
 
+// Helper: Format value for display
 export const formatValueForDisplay = (metric, value) => {
   if (value === null || value === undefined) return 'N/A';
   
@@ -51,6 +56,7 @@ export const formatValueForDisplay = (metric, value) => {
   }
 };
 
+// Helper: Get available metrics for axis
 export const getAvailableMetrics = (xAxis) => {
   if (xAxis === 'company' || xAxis === 'location') {
     return METRIC_OPTIONS;
@@ -58,6 +64,7 @@ export const getAvailableMetrics = (xAxis) => {
   return METRIC_OPTIONS.filter(m => m.value !== 'avgSalary');
 };
 
+// Helper: Group jobs by axis
 export const groupJobsByAxis = (jobs, axis) => {
   const groups = {};
 
@@ -103,6 +110,7 @@ export const groupJobsByAxis = (jobs, axis) => {
   }));
 };
 
+// Helper: Compute metric value
 export const computeMetricValue = (jobs, metric) => {
   if (!jobs || jobs.length === 0) return null;
 
@@ -135,6 +143,7 @@ export const computeMetricValue = (jobs, metric) => {
   }
 };
 
+// Helper: Build applications per day series
 export const buildApplicationsPerDaySeries = (jobs) => {
   const datedJobs = jobs.filter(job => job.dateApplied);
   
@@ -162,6 +171,7 @@ export const buildApplicationsPerDaySeries = (jobs) => {
     .sort((a, b) => a.timestamp - b.timestamp);
 };
 
+// Helper: Build applications per week series
 export const buildApplicationsPerWeekSeries = (jobs) => {
   const datedJobs = jobs.filter(job => job.dateApplied);
   
@@ -171,17 +181,16 @@ export const buildApplicationsPerWeekSeries = (jobs) => {
   
   datedJobs.forEach(job => {
     const date = new Date(job.dateApplied);
-    const startOfWeek = new Date(date);
-    startOfWeek.setDate(date.getDate() - date.getDay());
-    startOfWeek.setHours(0, 0, 0, 0);
+    const weekStart = new Date(date);
+    weekStart.setDate(date.getDate() - date.getDay()); // Start of week (Sunday)
+    weekStart.setHours(0, 0, 0, 0);
     
-    const weekTimestamp = startOfWeek.getTime();
-    const weekLabel = `Week of ${formatDayLabel(weekTimestamp)}`;
+    const weekKey = formatDayLabel(weekStart.getTime());
     
-    if (!weekGroups[weekLabel]) {
-      weekGroups[weekLabel] = { timestamp: weekTimestamp, count: 0 };
+    if (!weekGroups[weekKey]) {
+      weekGroups[weekKey] = { timestamp: weekStart.getTime(), count: 0 };
     }
-    weekGroups[weekLabel].count++;
+    weekGroups[weekKey].count++;
   });
 
   return Object.entries(weekGroups)
@@ -194,6 +203,7 @@ export const buildApplicationsPerWeekSeries = (jobs) => {
     .sort((a, b) => a.timestamp - b.timestamp);
 };
 
+// Helper: Build applications per month series
 export const buildApplicationsPerMonthSeries = (jobs) => {
   const datedJobs = jobs.filter(job => job.dateApplied);
   
@@ -203,25 +213,18 @@ export const buildApplicationsPerMonthSeries = (jobs) => {
   
   datedJobs.forEach(job => {
     const date = new Date(job.dateApplied);
-    const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-    const monthLabel = date.toLocaleDateString('en-US', { 
-      year: 'numeric', 
-      month: 'short' 
-    });
+    const monthKey = date.toLocaleDateString('en-US', { year: 'numeric', month: 'short' });
+    const monthStart = new Date(date.getFullYear(), date.getMonth(), 1);
     
     if (!monthGroups[monthKey]) {
-      monthGroups[monthKey] = { 
-        label: monthLabel, 
-        count: 0,
-        timestamp: new Date(date.getFullYear(), date.getMonth(), 1).getTime()
-      };
+      monthGroups[monthKey] = { timestamp: monthStart.getTime(), count: 0 };
     }
     monthGroups[monthKey].count++;
   });
 
   return Object.entries(monthGroups)
-    .map(([_, data]) => ({
-      label: data.label,
+    .map(([label, data]) => ({
+      label,
       value: data.count,
       displayValue: data.count.toString(),
       timestamp: data.timestamp,
@@ -229,11 +232,13 @@ export const buildApplicationsPerMonthSeries = (jobs) => {
     .sort((a, b) => a.timestamp - b.timestamp);
 };
 
+// Helper: Build status work style data
 export const buildStatusWorkStyleData = (jobs) => {
   const groups = {};
 
   jobs.forEach(job => {
     const status = job.status || 'Applied';
+    // Use workArrangement which is the actual property in your data
     const workStyle = job.workArrangement || job.workStyle || job.workstyle || 
                       job.remote || job.workLocation || 'Unknown';
     
@@ -254,33 +259,23 @@ export const buildStatusWorkStyleData = (jobs) => {
     .sort((a, b) => b.value - a.value);
 };
 
+// Helper: Compute summary metrics
 export const computeSummaryMetrics = (jobs) => {
   const totalApplications = jobs.length;
   
-  const INTERVIEW_STATUSES = new Set([
-    'OA',
-    'Behavioral Interview',
-    'Technical Interview',
-    'Final Interview',
-  ]);
-
-  const CLOSED_STATUSES = new Set([
-    'Rejected',
-    'Offer',
-    'Accepted',
-    'Withdrawn',
-  ]);
-  
   const activeApplications = jobs.filter(job => {
-    const status = job.status || '';
-    return !CLOSED_STATUSES.has(status);
+    const status = job.status?.toLowerCase() || '';
+    return !status.includes('reject') && 
+           !status.includes('withdrawn') && 
+           !status.includes('accepted') &&
+           !status.includes('offer accepted');
   }).length;
 
   const closedApplications = totalApplications - activeApplications;
 
   const respondedJobs = jobs.filter(job => {
-    const status = job.status || '';
-    return status && status !== 'Applied';
+    const status = job.status?.toLowerCase() || '';
+    return status && status !== 'applied' && status !== 'submitted';
   }).length;
   
   const responseRate = totalApplications > 0 
@@ -288,8 +283,8 @@ export const computeSummaryMetrics = (jobs) => {
     : '0%';
 
   const offeredJobs = jobs.filter(job => {
-    const status = job.status || '';
-    return status === 'Offer' || status === 'Accepted';
+    const status = job.status?.toLowerCase() || '';
+    return status.includes('offer');
   }).length;
   
   const offerRate = totalApplications > 0
@@ -297,8 +292,9 @@ export const computeSummaryMetrics = (jobs) => {
     : '0%';
 
   const interviewJobs = jobs.filter(job => {
-    const status = job.status || '';
-    return INTERVIEW_STATUSES.has(status);
+    const status = job.status?.toLowerCase() || '';
+    return status.includes('interview') || status.includes('onsite') || 
+           status.includes('phone screen') || status.includes('technical');
   }).length;
   
   const interviewRate = totalApplications > 0
@@ -315,15 +311,18 @@ export const computeSummaryMetrics = (jobs) => {
   };
 };
 
+// Helper: Compute timing metrics
 export const computeTimingMetrics = (jobs) => {
   const now = new Date();
   const currentYear = now.getFullYear();
   const currentMonth = now.getMonth();
   
+  // Get start of current week (Sunday)
   const startOfWeek = new Date(now);
   startOfWeek.setDate(now.getDate() - now.getDay());
   startOfWeek.setHours(0, 0, 0, 0);
   
+  // Get start of current month
   const startOfMonth = new Date(currentYear, currentMonth, 1);
 
   const thisWeekJobs = jobs.filter(job => {

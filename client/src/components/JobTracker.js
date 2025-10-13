@@ -13,6 +13,7 @@ import { isCollectionJob } from './helpers/default';
 import { useJobData } from './hooks/JobData';
 import { API_URL } from './helpers/default';
 import { exportToCSV } from './helpers/csvExport';
+import { INTERVIEW_STATUSES } from '../shared-constants';
 
 const JobTracker = () => {
   const [userId, setUserId] = useState(localStorage.getItem('jt_userId') || '');
@@ -91,13 +92,10 @@ const JobTracker = () => {
 
     // Apply status filter
     if (filterStatus !== 'All') {
-      if (filterStatus === 'Interview') {
-        list = list.filter((j) =>
-          ['OA', 'Behavioral Interview', 'Technical Interview', 'Final Interview'].includes(
-            j.status
-          )
-        );
-      } else {
+      if (filterStatus === 'Interview') { 
+        list = list.filter((j) => INTERVIEW_STATUSES.includes(j.status)); 
+      }
+      else {
         list = list.filter((j) => j.status === filterStatus);
       }
     }

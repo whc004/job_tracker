@@ -24,20 +24,18 @@ const AnalyticsControls = ({
         <div style={styles.controlGroup}>
           <label style={styles.label}>Data Scope:</label>
           <div style={styles.selectShell}>
-            <select
-              value={dataScope}
-              onChange={(e) => setDataScope(e.target.value)}
-              style={styles.select}
-            >
+            <select value={dataScope} onChange={(e) => setDataScope(e.target.value)} style={styles.select}>
               <option value="all">All Applications</option>
               <option value="applied">Applied</option>
-              <option value="interview">Interview (OA → Final)</option>
-              <option value="oa">OA</option>
-              <option value="behavioral">Behavioral Interview</option>
-              <option value="technical">Technical Interview</option>
-              <option value="final">Final Interview</option>
+              <option value="interview">Interview (All Rounds)</option>
+              <option value="round1">Interview - Round 1</option>
+              <option value="round2">Interview - Round 2</option>
+              <option value="round3">Interview - Round 3</option>
+              <option value="round4">Interview - Round 4</option>
+              <option value="round5plus">Interview - Round 5+</option>
               <option value="offer">Offer</option>
               <option value="rejected">Rejected</option>
+              <option value="noresponse">No Response</option>
             </select>
             <span style={styles.selectChevron} aria-hidden="true">▾</span>
           </div>

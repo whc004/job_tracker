@@ -1,3 +1,6 @@
+import { INTERVIEW_STATUSES } from '../../shared-constants';
+
+
 export const API_URL = 'https://jobtracker-production-2ed3.up.railway.app/api';
 
 export const formatDateUTC = (value) => {
@@ -26,12 +29,8 @@ export const parseSkills = (technicalDetails) => {
     .map(token => token.replace(/\b([a-z])/gi, (match) => match.toUpperCase()));
 };
 
-export const INTERVIEW_STATUSES = new Set([
-  'OA',
-  'Behavioral Interview',
-  'Technical Interview',
-  'Final Interview'
-]);
+
+export { INTERVIEW_STATUSES };
 
 export const statusColors = {
   'Applied': '#3b82f6',

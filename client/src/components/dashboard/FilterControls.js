@@ -1,4 +1,5 @@
 import React from 'react';
+import { STATUS_OPTIONS } from '../../shared-constants';
 
 const FilterControls = ({
   searchTerm,
@@ -37,21 +38,9 @@ const FilterControls = ({
       {/* Filters row */}
       <div style={styles.filters}>
         <div style={styles.selectShell}>
-          <select
-            value={filterStatus}
-            onChange={(e) => setFilterStatus(e.target.value)}
-            style={styles.select}
-          >
+          <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} style={styles.select}>
             <option value="All">All Status</option>
-            <option value="Applied">Applied</option>
-            <option value="Interview">Interview (OA → Final)</option>
-            <option value="OA">OA</option>
-            <option value="Behavioral Interview">Behavioral</option>
-            <option value="Technical Interview">Technical</option>
-            <option value="Final Interview">Final</option>
-            <option value="Offer">Offer</option>
-            <option value="Rejected">Rejected</option>
-            <option value="No Response">No Response</option>
+            {STATUS_OPTIONS.map(status => (<option key={status} value={status}>{status}</option>))}
           </select>
           <span style={styles.selectChevron}>▾</span>
         </div>

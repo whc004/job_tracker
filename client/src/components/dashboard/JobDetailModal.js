@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { statusColors, INTERVIEW_STATUSES, formatDateUTC } from '../helpers/default';
+import { STATUS_OPTIONS } from '../../shared-constants'; 
+import { statusColors, formatDateUTC } from '../helpers/default';
 
 const JobDetailModal = ({ open, job, onClose, onSave, onDelete }) => {
   const [form, setForm] = useState(null);
@@ -51,11 +52,7 @@ const JobDetailModal = ({ open, job, onClose, onSave, onDelete }) => {
 
           <Field label="Status">
             <select style={styles.input} value={form.status} onChange={e => set('status', e.target.value)}>
-              <option>Applied</option>
-              {[...INTERVIEW_STATUSES].map(s => <option key={s}>{s}</option>)}
-              <option>Offer</option>
-              <option>Rejected</option>
-              <option>No Response</option>
+              {STATUS_OPTIONS.map(status => (<option key={status} value={status}>{status}</option>))}
             </select>
           </Field>
 
