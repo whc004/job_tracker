@@ -1,4 +1,4 @@
-// client/src/components/JobTracker.js
+// @ts-nocheck
 import React, { useEffect, useMemo, useState } from 'react';
 import LoginScreen from './dashboard/LoginScreen';
 import Header from './dashboard/Header';
@@ -13,7 +13,7 @@ import { isCollectionJob } from './helpers/default';
 import { useJobData } from './hooks/JobData';
 import { API_URL } from './helpers/default';
 import { exportToCSV } from './helpers/csvExport';
-import { INTERVIEW_STATUSES } from '../shared-constants';
+import { INTERVIEW_STATUSES,JOB_STATUS } from '../shared-constants';
 
 const JobTracker = () => {
   const [userId, setUserId] = useState(localStorage.getItem('jt_userId') || '');
@@ -23,6 +23,10 @@ const JobTracker = () => {
   const [csvOpen, setCsvOpen] = useState(false);
   const [noResponseDays, setNoResponseDays] = useState(
     Number(localStorage.getItem('jt_noResponseDays')) || 14
+  );
+  const [userTimezone, setUserTimezone] = useState(
+    localStorage.getItem('jt_timezone') ||
+    Intl.DateTimeFormat().resolvedOptions().timeZone
   );
   const [detailJob, setDetailJob] = useState(null);
 
@@ -39,7 +43,6 @@ const JobTracker = () => {
 
   const {
     jobs,
-    stats,
     fetchData,
     toggleStar,
     deleteJob,
@@ -72,7 +75,7 @@ const JobTracker = () => {
     return jobs.map((j) => ({
       ...j,
       status: j.status || 'Applied',
-      priority: j.priority || 'Medium',
+      priority: j.priority,
       dateApplied: j.dateApplied || todayIso,
       technicalDetails: Array.isArray(j.technicalDetails)
         ? j.technicalDetails
@@ -138,6 +141,23 @@ const JobTracker = () => {
     return list;
   }, [safeJobs, searchTerm, filterStatus, collectionFilter, sortBy, sortOrder]);
 
+  const frontendStats = useMemo(() => {
+    return {
+      total: safeJobs.length,
+      activeOpportunities: safeJobs.filter(j => 
+        j.status !== JOB_STATUS.REJECTED && 
+        j.status !== JOB_STATUS.NO_RESPONSE && 
+        j.status !== JOB_STATUS.OFFER
+      ).length,
+      interviews: safeJobs.filter(j => 
+        INTERVIEW_STATUSES.includes(j.status)
+      ).length,
+      offers: safeJobs.filter(j => 
+        j.status === JOB_STATUS.OFFER
+      ).length,
+    };
+  }, [safeJobs]);
+
   // Bulk select helpers
   const toggleSelect = (id) => {
     setSelectedJobs((prev) => {
@@ -173,10 +193,10 @@ const JobTracker = () => {
       position: r.position || '',
       location: r.location || '',
       status: r.status || 'Applied',
-      workArrangement: r.workArrangement || 'Unspecified',
+      workArrangement: r.workArrangement || 'Not specified',
       dateApplied: r.dateApplied ? new Date(r.dateApplied) : todayIso,
       jobUrl: r.jobUrl || '',
-      priority: r.priority || 'Medium',
+      priority: r.priority || 'Normal',
       notes: r.notes || '',
       technicalDetails: r.technicalDetails
         ? String(r.technicalDetails)
@@ -212,7 +232,6 @@ const JobTracker = () => {
         onLogout={onLogout}
         activeTab={activeTab}
         setActiveTab={setActiveTab}
-        stats={stats}
         onOpenSettings={() => setSettingsOpen(true)}
       />
 
@@ -221,7 +240,7 @@ const JobTracker = () => {
           <Analytics 
             userId={userId} 
             jobs={safeJobs}
-            stats={stats}
+            stats={frontendStats}
             filteredJobs={filtered}
             activeFilter={filterStatus}
             searchTerm={searchTerm}
@@ -242,28 +261,28 @@ const JobTracker = () => {
           >
             <StatCard 
               title="Total Applications" 
-              value={stats?.total ?? safeJobs.length} 
+              value={frontendStats.total} 
               color="#3b82f6" 
               icon="📦"
               description="Everything you've added to your tracker."
             />
             <StatCard 
               title="Active Opportunities" 
-              value={stats?.activeOpportunities ?? 0} 
+              value={frontendStats.activeOpportunities ?? 0} 
               color="#8b5cf6" 
               icon="🎯"
               description="Open roles that haven't been closed or rejected."
             />
             <StatCard 
               title="Interviews" 
-              value={stats?.interviews ?? 0} 
+              value={frontendStats.interviews ?? 0} 
               color="#f59e0b" 
               icon="💼"
               description="OA, behavioral, technical, and final stages combined."
             />
             <StatCard 
               title="Offers" 
-              value={stats?.offers ?? 0} 
+              value={frontendStats.offers ?? 0} 
               color="#10b981" 
               icon="🎉"
               description="Opportunities that reached an offer."
@@ -308,6 +327,7 @@ const JobTracker = () => {
               <JobCard
                 key={job._id}
                 job={job}
+                userTimezone={userTimezone} 
                 onClick={() => setDetailJob(job)}
                 onToggleStar={async (e) => {
                   await toggleStar(userId, job);
@@ -349,6 +369,8 @@ const JobTracker = () => {
         onClose={() => setSettingsOpen(false)}
         noResponseDays={noResponseDays}
         setNoResponseDays={setNoResponseDays}
+        userTimezone={userTimezone}
+        setUserTimezone={setUserTimezone} 
       />
 
       <CSVUploadModal open={csvOpen} onClose={() => setCsvOpen(false)} onUpload={handleCSVUpload} />

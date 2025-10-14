@@ -1,9 +1,9 @@
 import { useState, useCallback } from 'react';
 import { API_URL } from '../helpers/default';
+import { PRIORITY_LEVELS } from '../../shared-constants';
 
 export const useJobData = () => {
   const [jobs, setJobs] = useState([]);
-  const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(false);
 
   const autoUpdateNoResponse = async (jobsList, userId, daysThreshold) => {
@@ -38,13 +38,10 @@ export const useJobData = () => {
   const fetchData = useCallback(async (userId, noResponseDays) => {
     setLoading(true);
     try {
-      const [statsRes, jobsRes] = await Promise.all([
-        fetch(`${API_URL}/stats`, { headers: { 'x-user-id': userId } }),
-        fetch(`${API_URL}/applications`, { headers: { 'x-user-id': userId } })
-      ]);
-      const statsData = await statsRes.json();
+      const jobsRes = await fetch(`${API_URL}/applications`, { 
+        headers: { 'x-user-id': userId } });
       const jobsData = await jobsRes.json();
-      if (statsData.success) setStats(statsData.data);
+    
       if (jobsData.success) {
         const updatedJobs = await autoUpdateNoResponse(jobsData.data, userId, noResponseDays);
         setJobs(updatedJobs);
@@ -71,7 +68,7 @@ export const useJobData = () => {
   };
 
   const toggleStar = async (userId, job) => {
-    const newPriority = job.priority === 'High' ? 'Medium' : 'High';
+    const newPriority = job.priority === PRIORITY_LEVELS.STAR ? PRIORITY_LEVELS.NORMAL : PRIORITY_LEVELS.STAR;
     try {
       const response = await fetch(`${API_URL}/applications/${job._id}`, {
         method: 'PUT',
@@ -134,7 +131,6 @@ export const useJobData = () => {
 
   return {
     jobs,
-    stats,
     loading,
     fetchData,
     updateJobStatus,

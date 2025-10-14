@@ -1,6 +1,6 @@
 import React from 'react';
 
-const Header = ({ userId, onLogout, activeTab, setActiveTab, stats, onOpenSettings }) => {
+const Header = ({ userId, onLogout, activeTab, setActiveTab, onOpenSettings }) => {
   return (
     <header style={styles.header}>
       <div style={styles.surface}>

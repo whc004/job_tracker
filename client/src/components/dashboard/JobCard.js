@@ -1,8 +1,9 @@
 // client/src/components/JobCard.js
 import React from 'react';
-import { parseSkills, isCollectionJob, statusColors, formatDateUTC } from '../helpers/default';
+import { parseSkills, isCollectionJob, statusColors } from '../helpers/default';
+import { formatDateInTimezone, getTimezoneAbbr } from '../helpers/default';
 
-const JobCard = ({ job, onClick, onToggleStar, isSelected, onToggleSelect, selectMode }) => {
+const JobCard = ({ job,userTimezone, onClick, onToggleStar, isSelected, onToggleSelect, selectMode }) => {
   const isStarred = isCollectionJob(job);
   const displaySkills = parseSkills(job.technicalDetails);
 
@@ -71,7 +72,9 @@ const JobCard = ({ job, onClick, onToggleStar, isSelected, onToggleSelect, selec
 
       <div style={styles.meta}>
         <span style={styles.date}>
-          📅 Applied: {job.dateApplied ? formatDateUTC(job.dateApplied) : 'Not tracked'}
+          📅 Applied: {job.dateApplied 
+          ? `${formatDateInTimezone(job.dateApplied, userTimezone)} 
+          (${getTimezoneAbbr(userTimezone, job.dateApplied)})` : 'N/A'}
         </span>
       </div>
 

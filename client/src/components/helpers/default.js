@@ -11,6 +11,26 @@ export const formatDateUTC = (value) => {
   return `${y}/${m}/${day}`;
 };
 
+export const formatDateInTimezone = (date, tz) => {
+  if (!date) return '';
+  const d = new Date(date);
+  return d.toLocaleString('en-US', {
+    timeZone: tz,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+};
+
+export const getTimezoneAbbr = (tz, date) => {
+  const d = date ? new Date(date) : new Date();
+  const parts = new Intl.DateTimeFormat('en-US', { timeZone: tz, timeZoneName: 'short' }).formatToParts(d);
+  const name = parts.find(p => p.type === 'timeZoneName');
+  return name ? name.value : tz;
+};
+
 export const isCollectionJob = (job) => {
   if (!job) return false;
   if (job.isCollection || job.collection || job.isCollected) return true;

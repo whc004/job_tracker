@@ -1,3 +1,4 @@
+import { PRIORITY_LEVELS } from '../../shared-constants';
 // Constants
 export const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
@@ -20,7 +21,7 @@ const METRIC_OPTIONS = [
 export const isStarredJob = (job) => {
   // Check multiple possible "starred" indicators
   if (job.starred === true) return true;
-  if (job.priority && (job.priority === 'High' || job.priority === 'Dream Job')) return true;
+  if (job.priority && job.priority === PRIORITY_LEVELS.STAR) return true;
   if (job.isFavorite === true) return true;
   return false;
 };
