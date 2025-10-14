@@ -454,7 +454,7 @@ class LinkedInJobExtractor {
   extractKeywords() {
     const keywords = new Set();
     
-    const pattern = new RegExp(`\\b(${TECHNICAL_TERMS.join('|')})\\b`, 'gi');
+    const pattern = new RegExp(`\\b(${window.JobTrackerConstants.TECHNICAL_TERMS.join('|')})\\b`, 'gi');
     
     const content = document.querySelector('.jobs-description-content__text, .jobs-box__html-content');
     if (content) {
@@ -542,14 +542,17 @@ class LinkedInJobExtractor {
           this.showNotification('✅ Job saved to tracker!');
         }
         return true;
-      } else {
+      } 
+      else {
         console.error('❌ Server error:', result);
         
-        // Handle duplicate case with specific message
+        const errorMsg = result.message || JSON.stringify(result) || 'Unknown error';
+  
         if (result.isDuplicate) {
-          this.showNotification('ℹ️ ' + result.message);
-        } else {
-          this.showNotification('❌ Failed to save: ' + (result.message || 'Unknown error'));
+          this.showNotification('ℹ️ ' + errorMsg);
+        } 
+        else {
+          this.showNotification('❌ Failed: ' + errorMsg);
         }
         return false;
       }

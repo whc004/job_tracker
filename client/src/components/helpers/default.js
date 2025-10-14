@@ -15,7 +15,7 @@ export const isCollectionJob = (job) => {
   if (!job) return false;
   if (job.isCollection || job.collection || job.isCollected) return true;
   const priority = (job.priority || '').toLowerCase();
-  return priority === 'high' || priority === 'dream job' || priority === 'collection' || priority === 'favorite';
+  return priority === 'star';
 };
 
 export const parseSkills = (technicalDetails) => {

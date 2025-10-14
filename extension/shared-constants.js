@@ -8,7 +8,7 @@ const JOB_STATUS = {
   INTERVIEW_ROUND_2: 'Interview - Round 2',
   INTERVIEW_ROUND_3: 'Interview - Round 3',
   INTERVIEW_ROUND_4: 'Interview - Round 4',
-  INTERVIEW_ROUND_5_TO_10: 'Interview - Round 5 to round 10',
+  INTERVIEW_ROUND_5_TO_10: 'Interview - Round 5-10',
   OFFER: 'Offer',
   REJECTED: 'Rejected',
   NO_RESPONSE: 'No Response'
@@ -210,10 +210,10 @@ const getUserTimezone = () => {
 };
 
 // ==================== DASHBOARD URL ====================
-const DASHBOARD_URL = 'https://your-dashboard.railway.app';
+const DASHBOARD_URL = 'http://localhost:3000/';
 
 // ==================== API ENDPOINTS ====================
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+const API_BASE_URL = 'https://jobtracker-production-2ed3.up.railway.app/api';
 
 const API_ENDPOINTS = {
   JOBS: '/api/jobs',
@@ -288,33 +288,6 @@ if (typeof module !== 'undefined' && module.exports) {
   };
 }
 
-// For React Client
-export {
-  JOB_STATUS,
-  STATUS_OPTIONS,
-  STATUS_COLORS,
-  INTERVIEW_STATUSES,
-  PRIORITY_LEVELS,
-  PRIORITY_OPTIONS,
-  PRIORITY_COLORS,
-  PRIORITY_ICONS,
-  JOB_TYPES,
-  JOB_TYPE_OPTIONS,
-  WORK_ARRANGEMENTS,
-  WORK_ARRANGEMENT_OPTIONS,
-  EXPERIENCE_LEVELS,
-  EXPERIENCE_LEVEL_OPTIONS,
-  TECHNICAL_TERMS,
-  TIMEZONES,
-  TIMEZONE_OPTIONS,
-  getUserTimezone,
-  DASHBOARD_URL,
-  API_BASE_URL,
-  API_ENDPOINTS,
-  STORAGE_KEYS,
-  VALIDATION,
-  DATE_FORMATS
-};
 
 // For Chrome Extension
 if (typeof window !== 'undefined') {

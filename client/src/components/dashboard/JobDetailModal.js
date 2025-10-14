@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { STATUS_OPTIONS } from '../../shared-constants'; 
+import { STATUS_OPTIONS, PRIORITY_OPTIONS, JOB_STATUS } from '../../shared-constants'; 
 import { statusColors, formatDateUTC } from '../helpers/default';
 
 const JobDetailModal = ({ open, job, onClose, onSave, onDelete }) => {
@@ -14,7 +14,7 @@ const JobDetailModal = ({ open, job, onClose, onSave, onDelete }) => {
         salary: job.salary || '',
         status: job.status || 'Applied',
         workArrangement: job.workArrangement || '',
-        priority: job.priority || 'Medium',
+        priority: job.priority || 'Normal',
         dateApplied: job.dateApplied ? new Date(job.dateApplied).toISOString().slice(0, 10) : '',
         jobUrl: job.jobUrl || '',
         contactPerson: job.contactPerson || '',
@@ -27,6 +27,41 @@ const JobDetailModal = ({ open, job, onClose, onSave, onDelete }) => {
   if (!open || !job || !form) return null;
 
   const set = (k, v) => setForm(prev => ({ ...prev, [k]: v }));
+
+  const handleNextStep = () => {
+    const currentStatus = form.status;
+    let nextStatus = currentStatus;
+
+    if (currentStatus === JOB_STATUS.APPLIED) {
+      nextStatus = JOB_STATUS.INTERVIEW_ROUND_1;
+    } else if (currentStatus === JOB_STATUS.INTERVIEW_ROUND_1) {
+      nextStatus = JOB_STATUS.INTERVIEW_ROUND_2;
+    } else if (currentStatus === JOB_STATUS.INTERVIEW_ROUND_2) {
+      nextStatus = JOB_STATUS.INTERVIEW_ROUND_3;
+    } else if (currentStatus === JOB_STATUS.INTERVIEW_ROUND_3) {
+      nextStatus = JOB_STATUS.INTERVIEW_ROUND_4;
+    } else if (currentStatus === JOB_STATUS.INTERVIEW_ROUND_4) {
+      nextStatus = JOB_STATUS.INTERVIEW_ROUND_5_TO_10;
+    } else if (currentStatus === JOB_STATUS.INTERVIEW_ROUND_5_TO_10) {
+      nextStatus = JOB_STATUS.OFFER;
+    }
+
+    if (nextStatus !== currentStatus) {
+      set('status', nextStatus);
+    }
+  };
+
+  const handleMarkAsOffer = () => {
+    set('status', JOB_STATUS.OFFER);
+  };
+
+  const handleMarkAsRejected = () => {
+    if (window.confirm('Mark this application as Rejected?')) {
+      set('status', JOB_STATUS.REJECTED);
+    }
+  };
+
+  const canMoveNext = ![JOB_STATUS.OFFER, JOB_STATUS.REJECTED, JOB_STATUS.NO_RESPONSE].includes(form.status);
 
   return (
     <div style={styles.backdrop} onClick={onClose}>
@@ -58,9 +93,7 @@ const JobDetailModal = ({ open, job, onClose, onSave, onDelete }) => {
 
           <Field label="Priority">
             <select style={styles.input} value={form.priority} onChange={e => set('priority', e.target.value)}>
-              <option>High</option>
-              <option>Medium</option>
-              <option>Low</option>
+              {PRIORITY_OPTIONS.map(priority => (<option key={priority} value={priority}>{priority}</option>))}
             </select>
           </Field>
 
@@ -98,6 +131,7 @@ const JobDetailModal = ({ open, job, onClose, onSave, onDelete }) => {
         <div style={styles.footer}>
           <a href={job.jobUrl} target="_blank" rel="noreferrer" style={styles.linkBtn}>🔗 Open Listing</a>
           <div style={{ flex: 1 }} />
+          
           <button
             style={{ ...styles.dangerBtn }}
             onClick={() => onDelete(job)}
@@ -105,6 +139,35 @@ const JobDetailModal = ({ open, job, onClose, onSave, onDelete }) => {
           >
             🗑 Delete
           </button>
+
+          <button
+            style={{
+              ...styles.nextStepBtn,
+              ...(canMoveNext ? {} : styles.disabledBtn)
+            }}
+            onClick={handleNextStep}
+            disabled={!canMoveNext}
+            title="Move to next step in pipeline"
+          >
+            ➡️ Next Step
+          </button>
+
+          <button
+            style={styles.offerBtn}
+            onClick={handleMarkAsOffer}
+            title="Mark as Offer"
+          >
+            🎉 Offer
+          </button>
+
+          <button
+            style={styles.rejectBtn}
+            onClick={handleMarkAsRejected}
+            title="Mark as Rejected"
+          >
+            ❌ Reject
+          </button>
+
           <button
             style={{
               ...styles.statusChip,
@@ -115,6 +178,7 @@ const JobDetailModal = ({ open, job, onClose, onSave, onDelete }) => {
           >
             {form.status}{job.dateApplied && ` • Applied ${formatDateUTC(form.dateApplied)}`}
           </button>
+          
           <button
             style={styles.primaryBtn}
             onClick={() => {
@@ -156,11 +220,15 @@ const styles = {
   grid: { display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12, marginTop: 8 },
   label: { display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 6, fontWeight: 600 },
   input: { width: '100%', padding: '10px 12px', border: '2px solid #e5e7eb', borderRadius: 10, fontSize: 14, outline: 'none' },
-  footer: { display: 'flex', alignItems: 'center', gap: 10, marginTop: 16 },
+  footer: { display: 'flex', alignItems: 'center', gap: 10, marginTop: 16, flexWrap: 'wrap' },
   primaryBtn: { padding: '10px 18px', background: '#2563eb', color: '#fff', border: 'none', borderRadius: 10, cursor: 'pointer', fontWeight: 700 },
-  dangerBtn: { padding: '10px 12px', background: '#ef4444', color: '#fff', border: 'none', borderRadius: 10, cursor: 'pointer' },
+  dangerBtn: { padding: '10px 14px', background: '#ef4444', color: '#fff', border: 'none', borderRadius: 10, cursor: 'pointer', fontWeight: 600 },
   linkBtn: { padding: '8px 12px', background: '#f3f4f6', color: '#111827', borderRadius: 10, textDecoration: 'none', fontWeight: 600 },
-  statusChip: { padding: '8px 12px', borderRadius: 999, border: 'none' }
+  statusChip: { padding: '8px 12px', borderRadius: 999, border: 'none', fontSize: 13 },
+  nextStepBtn: { padding: '10px 14px', background: '#8b5cf6', color: '#fff', border: 'none', borderRadius: 10, cursor: 'pointer', fontWeight: 600 },
+  offerBtn: { padding: '10px 14px', background: '#10b981', color: '#fff', border: 'none', borderRadius: 10, cursor: 'pointer', fontWeight: 600 },
+  rejectBtn: { padding: '10px 14px', background: '#f59e0b', color: '#fff', border: 'none', borderRadius: 10, cursor: 'pointer', fontWeight: 600 },
+  disabledBtn: { opacity: 0.5, cursor: 'not-allowed' }
 };
 
 export default JobDetailModal;

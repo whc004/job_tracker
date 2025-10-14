@@ -8,7 +8,7 @@ const JOB_STATUS = {
   INTERVIEW_ROUND_2: 'Interview - Round 2',
   INTERVIEW_ROUND_3: 'Interview - Round 3',
   INTERVIEW_ROUND_4: 'Interview - Round 4',
-  INTERVIEW_ROUND_5_TO_10: 'Interview - Round 5 to round 10',
+  INTERVIEW_ROUND_5_TO_10: 'Interview - Round 5-10',
   OFFER: 'Offer',
   REJECTED: 'Rejected',
   NO_RESPONSE: 'No Response'
