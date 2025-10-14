@@ -378,7 +378,7 @@ class LinkedInJobExtractor {
       }
     }
     
-    return 'Not specified';
+    return window.JobTrackerConstants.JOB_TYPE.NOT_SPECIFIED;
   }
 
   extractWorkArrangement() {
@@ -398,7 +398,7 @@ class LinkedInJobExtractor {
     if (pageText.includes('hybrid')) return 'Hybrid';
     if (pageText.includes('on-site') || pageText.includes('onsite')) return 'On-site';
     
-    return 'Not specified';
+    return window.JobTrackerConstants.WORK_ARRANGEMENT.NOT_SPECIFIED;
   }
 
   extractSalary() {
@@ -426,7 +426,7 @@ class LinkedInJobExtractor {
       }
     }
     
-    return 'Not specified';
+    return window.JobTrackerConstants.JOB_TYPE.NOT_SPECIFIED;
   }
 
   extractExperienceLevel() {
@@ -448,7 +448,7 @@ class LinkedInJobExtractor {
     if (position.includes('director')) return 'Executive Level';
     if (position.includes('intern')) return 'Entry Level';
     
-    return 'Not specified';
+    return window.JobTrackerConstants.EXPERIENCE_LEVEL.NOT_SPECIFIED;
   }
 
   extractKeywords() {

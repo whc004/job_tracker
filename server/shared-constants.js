@@ -1,5 +1,4 @@
-// THIS IS A COPY OF ../shared-constants.js
-// Edit the root file and run: cp ../shared-constants.js 
+// THIS IS A Server part OF shared-constants.js
 
 // ==================== JOB STATUS ====================
 const JOB_STATUS = {
@@ -71,6 +70,7 @@ const PRIORITY_ICONS = {
 
 // ==================== JOB TYPES ====================
 const JOB_TYPES = {
+  NOT_SPECIFIED: 'Not specified',
   FULL_TIME: 'Full-time',
   PART_TIME: 'Part-time',
   CONTRACT: 'Contract',
@@ -80,6 +80,7 @@ const JOB_TYPES = {
 };
 
 const JOB_TYPE_OPTIONS = [
+  JOB_TYPES.NOT_SPECIFIED,
   JOB_TYPES.FULL_TIME,
   JOB_TYPES.PART_TIME,
   JOB_TYPES.CONTRACT,
@@ -90,12 +91,14 @@ const JOB_TYPE_OPTIONS = [
 
 // ==================== WORK ARRANGEMENT ====================
 const WORK_ARRANGEMENTS = {
+  NOT_SPECIFIED: 'Not specified',
   REMOTE: 'Remote',
   HYBRID: 'Hybrid',
   ON_SITE: 'On-site'
 };
 
 const WORK_ARRANGEMENT_OPTIONS = [
+  WORK_ARRANGEMENTS.NOT_SPECIFIED,
   WORK_ARRANGEMENTS.REMOTE,
   WORK_ARRANGEMENTS.HYBRID,
   WORK_ARRANGEMENTS.ON_SITE
@@ -103,6 +106,7 @@ const WORK_ARRANGEMENT_OPTIONS = [
 
 // ==================== EXPERIENCE LEVELS ====================
 const EXPERIENCE_LEVELS = {
+  NOT_SPECIFIED: 'Not specified',
   ENTRY: 'Entry level',
   ASSOCIATE: 'Associate',
   MID_SENIOR: 'Mid-Senior level',
@@ -112,6 +116,7 @@ const EXPERIENCE_LEVELS = {
 };
 
 const EXPERIENCE_LEVEL_OPTIONS = [
+  EXPERIENCE_LEVELS.NOT_SPECIFIED,
   EXPERIENCE_LEVELS.INTERNSHIP,
   EXPERIENCE_LEVELS.ENTRY,
   EXPERIENCE_LEVELS.ASSOCIATE,
@@ -261,36 +266,6 @@ const DATE_FORMATS = {
 // For Node.js/Server
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
-    JOB_STATUS,
-    STATUS_OPTIONS,
-    STATUS_COLORS,
-    INTERVIEW_STATUSES,
-    PRIORITY_LEVELS,
-    PRIORITY_OPTIONS,
-    PRIORITY_COLORS,
-    PRIORITY_ICONS,
-    JOB_TYPES,
-    JOB_TYPE_OPTIONS,
-    WORK_ARRANGEMENTS,
-    WORK_ARRANGEMENT_OPTIONS,
-    EXPERIENCE_LEVELS,
-    EXPERIENCE_LEVEL_OPTIONS,
-    TECHNICAL_TERMS,
-    TIMEZONES,
-    TIMEZONE_OPTIONS,
-    getUserTimezone,
-    DASHBOARD_URL,
-    API_BASE_URL,
-    API_ENDPOINTS,
-    STORAGE_KEYS,
-    VALIDATION,
-    DATE_FORMATS
-  };
-}
-
-// For Chrome Extension
-if (typeof window !== 'undefined') {
-  window.JobTrackerConstants = {
     JOB_STATUS,
     STATUS_OPTIONS,
     STATUS_COLORS,
