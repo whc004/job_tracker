@@ -288,34 +288,6 @@ if (typeof module !== 'undefined' && module.exports) {
   };
 }
 
-// For React Client
-export {
-  JOB_STATUS,
-  STATUS_OPTIONS,
-  STATUS_COLORS,
-  INTERVIEW_STATUSES,
-  PRIORITY_LEVELS,
-  PRIORITY_OPTIONS,
-  PRIORITY_COLORS,
-  PRIORITY_ICONS,
-  JOB_TYPES,
-  JOB_TYPE_OPTIONS,
-  WORK_ARRANGEMENTS,
-  WORK_ARRANGEMENT_OPTIONS,
-  EXPERIENCE_LEVELS,
-  EXPERIENCE_LEVEL_OPTIONS,
-  TECHNICAL_TERMS,
-  TIMEZONES,
-  TIMEZONE_OPTIONS,
-  getUserTimezone,
-  DASHBOARD_URL,
-  API_BASE_URL,
-  API_ENDPOINTS,
-  STORAGE_KEYS,
-  VALIDATION,
-  DATE_FORMATS
-};
-
 // For Chrome Extension
 if (typeof window !== 'undefined') {
   window.JobTrackerConstants = {
