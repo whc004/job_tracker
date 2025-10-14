@@ -142,20 +142,15 @@ const JobTracker = () => {
   }, [safeJobs, searchTerm, filterStatus, collectionFilter, sortBy, sortOrder]);
 
   const frontendStats = useMemo(() => {
-    return {
-      total: safeJobs.length,
-      activeOpportunities: safeJobs.filter(j => 
-        j.status !== JOB_STATUS.REJECTED && 
-        j.status !== JOB_STATUS.NO_RESPONSE && 
-        j.status !== JOB_STATUS.OFFER
-      ).length,
-      interviews: safeJobs.filter(j => 
-        INTERVIEW_STATUSES.includes(j.status)
-      ).length,
-      offers: safeJobs.filter(j => 
-        j.status === JOB_STATUS.OFFER
-      ).length,
-    };
+    const total = safeJobs.length;
+    const applied = safeJobs.filter(j => j.status === JOB_STATUS.APPLIED).length;
+    const rejected = safeJobs.filter(j => j.status === JOB_STATUS.REJECTED).length;
+    const noResponse = safeJobs.filter(j => j.status === JOB_STATUS.NO_RESPONSE).length;
+    const offers = safeJobs.filter(j => j.status === JOB_STATUS.OFFER).length;
+    const interviews = safeJobs.filter(j => INTERVIEW_STATUSES.includes(j.status)).length;
+    const activeOpportunities = total - (rejected + noResponse + offers);
+
+    return { total, applied , activeOpportunities, interviews, offers, rejected };
   }, [safeJobs]);
 
   // Bulk select helpers

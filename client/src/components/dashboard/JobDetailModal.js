@@ -41,8 +41,8 @@ const JobDetailModal = ({ open, job, onClose, onSave, onDelete }) => {
     } else if (currentStatus === JOB_STATUS.INTERVIEW_ROUND_3) {
       nextStatus = JOB_STATUS.INTERVIEW_ROUND_4;
     } else if (currentStatus === JOB_STATUS.INTERVIEW_ROUND_4) {
-      nextStatus = JOB_STATUS.INTERVIEW_ROUND_5_TO_10;
-    } else if (currentStatus === JOB_STATUS.INTERVIEW_ROUND_5_TO_10) {
+      nextStatus = JOB_STATUS.INTERVIEW_ROUND_5;
+    } else if (currentStatus === JOB_STATUS.INTERVIEW_ROUND_5) {
       nextStatus = JOB_STATUS.OFFER;
     }
 

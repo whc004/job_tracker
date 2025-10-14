@@ -1,5 +1,5 @@
 import React from 'react';
-
+import { STATUS_OPTIONS } from '../../shared-constants'; 
 const AnalyticsControls = ({
   dataScope,
   setDataScope,
@@ -26,16 +26,8 @@ const AnalyticsControls = ({
           <div style={styles.selectShell}>
             <select value={dataScope} onChange={(e) => setDataScope(e.target.value)} style={styles.select}>
               <option value="all">All Applications</option>
-              <option value="applied">Applied</option>
               <option value="interview">Interview (All Rounds)</option>
-              <option value="round1">Interview - Round 1</option>
-              <option value="round2">Interview - Round 2</option>
-              <option value="round3">Interview - Round 3</option>
-              <option value="round4">Interview - Round 4</option>
-              <option value="round5plus">Interview - Round 5+</option>
-              <option value="offer">Offer</option>
-              <option value="rejected">Rejected</option>
-              <option value="noresponse">No Response</option>
+              {STATUS_OPTIONS.map((status) => (<option key={status} value={status}>{status}</option>))}
             </select>
             <span style={styles.selectChevron} aria-hidden="true">▾</span>
           </div>
@@ -80,24 +72,24 @@ const AnalyticsControls = ({
       {stats && (
         <div style={styles.quickStats}>
           <div style={styles.statItem}>
-            <span style={styles.statValue}>{stats.total || 0}</span>
-            <span style={styles.statLabel}>Total</span>
+            <span style={styles.statValue}>{stats.activeOpportunities  || 0}</span>
+            <span style={styles.statLabel}>Opportunities</span>
           </div>
           <div style={styles.statItem}>
             <span style={styles.statValue}>{stats.applied || 0}</span>
             <span style={styles.statLabel}>Applied</span>
           </div>
           <div style={styles.statItem}>
-            <span style={styles.statValue}>{stats.interviewing || 0}</span>
+            <span style={styles.statValue}>{stats.interviews || 0}</span>
             <span style={styles.statLabel}>Interview</span>
+          </div>
+          <div style={styles.statItem}>
+            <span style={styles.statValue}>{stats.offers || 0}</span>
+            <span style={styles.statLabel}>Offered</span>
           </div>
           <div style={styles.statItem}>
             <span style={styles.statValue}>{stats.rejected || 0}</span>
             <span style={styles.statLabel}>Rejected</span>
-          </div>
-          <div style={styles.statItem}>
-            <span style={styles.statValue}>{stats.offered || 0}</span>
-            <span style={styles.statLabel}>Offered</span>
           </div>
         </div>
       )}
