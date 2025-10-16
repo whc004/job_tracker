@@ -1,4 +1,4 @@
-// shared-constants.js
+// THIS IS A COPY OF shared-constants.js
 
 // ==================== JOB STATUS ====================
 const JOB_STATUS = {
@@ -240,8 +240,6 @@ const TIMEZONE_OPTIONS = [
   { value: TIMEZONES.SAO_PAULO, label: 'São Paulo (BRT)', offset: 'UTC-3' }
 ];
 
-const getUserTimezone = () => Intl.DateTimeFormat().resolvedOptions().timeZone;
-
 // ==================== DASHBOARD / API ====================
 const DASHBOARD_URL = 'https://your-dashboard.railway.app';
 
@@ -289,11 +287,12 @@ const DATE_FORMATS = {
   DATE_INPUT: 'YYYY-MM-DD'
 };
 
-// ==================== EXPORT ====================
 
+// ==================== EXPORT FOR DIFFERENT ENVIRONMENTS ====================
+
+// For Chrome Extension
 if (typeof window !== 'undefined') {
   window.JobTrackerConstants = {
-    ...(window.JobTrackerConstants || {}),
     JOB_STATUS,
     STATUS_OPTIONS,
     INTERVIEW_STATUSES,
@@ -319,7 +318,6 @@ if (typeof window !== 'undefined') {
     COMMON_WORDS,
     TIMEZONES,
     TIMEZONE_OPTIONS,
-    getUserTimezone,
     DASHBOARD_URL,
     API_BASE_URL,
     API_ENDPOINTS,

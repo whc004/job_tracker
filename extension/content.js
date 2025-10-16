@@ -509,6 +509,8 @@ class LinkedInJobExtractor {
 
 
   extractKeywords() {
+    const constants = window.JobTrackerConstants;
+    if (!constants) return {};
 
     const keywords = new Set();
     const pattern = new RegExp(`\\b(${constants.TECHNICAL_TERMS.join('|')})\\b`, 'gi');
@@ -528,7 +530,7 @@ class LinkedInJobExtractor {
     if (position !== 'Job position Not Found') {
       position.split(/[\s,\-\(\)]+/).forEach(word => {
         const cleaned = word.replace(/[!.?]/g, '').trim();
-        if (cleaned.length > 2 && !(constants.EXPERIENCE_LEVELS.COMMON_WORDS.includes(word.toLowerCase()))) {
+        if (cleaned.length > 2 && !(constants.COMMON_WORDS.includes(word.toLowerCase()))) {
           keywords.add(cleaned);
         }
       });
