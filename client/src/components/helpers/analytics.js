@@ -1,25 +1,27 @@
 import { PRIORITY_LEVELS } from '../../shared-constants';
+
 // Constants
 export const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
 export const AXIS_OPTIONS = [
   { value: 'status', label: 'Status' },
-  { value: 'applicationState', label: 'Application State' },
-  { value: 'workStyle', label: 'Work Arrangement' },
+  { value: 'workArrangement', label: 'Work Arrangement' },
+  { value: 'jobType', label: 'Job Type' },
+  { value: 'experienceLevel', label: 'Experience Level' },
+  { value: 'technicalSkills', label: 'Technical Skills' },
   { value: 'dateApplied', label: 'Date Applied' },
   { value: 'location', label: 'Location' },
   { value: 'company', label: 'Company' },
+  { value: 'priority', label: 'Priority' },
 ];
 
 const METRIC_OPTIONS = [
   { value: 'count', label: 'Count' },
-  { value: 'avgSalary', label: 'Average Salary' },
   { value: 'responseRate', label: 'Response Rate' },
 ];
 
 // Helper: Check if job is starred (high priority)
 export const isStarredJob = (job) => {
-  // Check multiple possible "starred" indicators
   if (job.starred === true) return true;
   if (job.priority && job.priority === PRIORITY_LEVELS.STAR) return true;
   if (job.isFavorite === true) return true;
@@ -48,8 +50,6 @@ export const formatValueForDisplay = (metric, value) => {
   switch (metric) {
     case 'count':
       return value.toLocaleString();
-    case 'avgSalary':
-      return `$${Math.round(value).toLocaleString()}`;
     case 'responseRate':
       return `${value.toFixed(1)}%`;
     default:
@@ -59,16 +59,40 @@ export const formatValueForDisplay = (metric, value) => {
 
 // Helper: Get available metrics for axis
 export const getAvailableMetrics = (xAxis) => {
-  if (xAxis === 'company' || xAxis === 'location') {
-    return METRIC_OPTIONS;
-  }
-  return METRIC_OPTIONS.filter(m => m.value !== 'avgSalary');
+  return METRIC_OPTIONS;
 };
 
-// Helper: Group jobs by axis
+// ✅ UPDATED: Enhanced groupJobsByAxis with new axis types
 export const groupJobsByAxis = (jobs, axis) => {
   const groups = {};
 
+  // Special handling for technical skills (array field)
+  if (axis === 'technicalSkills') {
+    jobs.forEach(job => {
+      const skills = Array.isArray(job.technicalDetails) 
+        ? job.technicalDetails 
+        : [];
+      
+      if (skills.length === 0) {
+        const key = 'No Skills Listed';
+        if (!groups[key]) groups[key] = [];
+        groups[key].push(job);
+      } else {
+        skills.forEach(skill => {
+          const key = skill.trim();
+          if (!groups[key]) groups[key] = [];
+          groups[key].push(job);
+        });
+      }
+    });
+    
+    return Object.entries(groups)
+      .map(([label, jobs]) => ({ label, jobs }))
+      .sort((a, b) => b.jobs.length - a.jobs.length) // Sort by count
+      .slice(0, 20); // Limit to top 20 skills
+  }
+
+  // Standard grouping for other axes
   jobs.forEach(job => {
     let key;
     
@@ -76,12 +100,23 @@ export const groupJobsByAxis = (jobs, axis) => {
       case 'status':
         key = job.status || 'Unknown';
         break;
-      case 'applicationState':
-        key = job.applicationState || 'Not Set';
+        
+      case 'workArrangement':
+        key = job.workArrangement || job.workStyle || 'Not specified';
         break;
-      case 'workStyle':
-        key = job.workArrangement || job.workStyle || 'Unknown';
+        
+      case 'jobType':
+        key = job.jobType || 'Not specified';
         break;
+        
+      case 'experienceLevel':
+        key = job.experienceLevel || 'Not specified';
+        break;
+        
+      case 'priority':
+        key = isStarredJob(job) ? 'Star' : 'Normal';
+        break;
+        
       case 'dateApplied':
         if (job.dateApplied) {
           key = formatDayLabel(getStartOfDay(job.dateApplied).getTime());
@@ -89,12 +124,15 @@ export const groupJobsByAxis = (jobs, axis) => {
           key = 'No Date';
         }
         break;
+        
       case 'location':
         key = job.location || 'Unknown';
         break;
+        
       case 'company':
         key = job.company || 'Unknown';
         break;
+        
       default:
         key = 'Unknown';
     }
@@ -118,18 +156,6 @@ export const computeMetricValue = (jobs, metric) => {
   switch (metric) {
     case 'count':
       return jobs.length;
-    
-    case 'avgSalary': {
-      const salaries = jobs
-        .map(job => job.salary)
-        .filter(salary => salary != null && !isNaN(salary));
-      
-      if (salaries.length === 0) return null;
-      
-      const sum = salaries.reduce((acc, val) => acc + val, 0);
-      return sum / salaries.length;
-    }
-    
     case 'responseRate': {
       const total = jobs.length;
       const responded = jobs.filter(job => 
@@ -183,7 +209,7 @@ export const buildApplicationsPerWeekSeries = (jobs) => {
   datedJobs.forEach(job => {
     const date = new Date(job.dateApplied);
     const weekStart = new Date(date);
-    weekStart.setDate(date.getDate() - date.getDay()); // Start of week (Sunday)
+    weekStart.setDate(date.getDate() - date.getDay());
     weekStart.setHours(0, 0, 0, 0);
     
     const weekKey = formatDayLabel(weekStart.getTime());
@@ -239,7 +265,6 @@ export const buildStatusWorkStyleData = (jobs) => {
 
   jobs.forEach(job => {
     const status = job.status || 'Applied';
-    // Use workArrangement which is the actual property in your data
     const workStyle = job.workArrangement || job.workStyle || job.workstyle || 
                       job.remote || job.workLocation || 'Unknown';
     
@@ -260,86 +285,3 @@ export const buildStatusWorkStyleData = (jobs) => {
     .sort((a, b) => b.value - a.value);
 };
 
-// Helper: Compute summary metrics
-export const computeSummaryMetrics = (jobs) => {
-  const totalApplications = jobs.length;
-  
-  const activeApplications = jobs.filter(job => {
-    const status = job.status?.toLowerCase() || '';
-    return !status.includes('reject') && 
-           !status.includes('withdrawn') && 
-           !status.includes('accepted') &&
-           !status.includes('offer accepted');
-  }).length;
-
-  const closedApplications = totalApplications - activeApplications;
-
-  const respondedJobs = jobs.filter(job => {
-    const status = job.status?.toLowerCase() || '';
-    return status && status !== 'applied' && status !== 'submitted';
-  }).length;
-  
-  const responseRate = totalApplications > 0 
-    ? `${((respondedJobs / totalApplications) * 100).toFixed(1)}%`
-    : '0%';
-
-  const offeredJobs = jobs.filter(job => {
-    const status = job.status?.toLowerCase() || '';
-    return status.includes('offer');
-  }).length;
-  
-  const offerRate = totalApplications > 0
-    ? `${((offeredJobs / totalApplications) * 100).toFixed(1)}%`
-    : '0%';
-
-  const interviewJobs = jobs.filter(job => {
-    const status = job.status?.toLowerCase() || '';
-    return status.includes('interview') || status.includes('onsite') || 
-           status.includes('phone screen') || status.includes('technical');
-  }).length;
-  
-  const interviewRate = totalApplications > 0
-    ? `${((interviewJobs / totalApplications) * 100).toFixed(1)}%`
-    : '0%';
-
-  return {
-    totalApplications,
-    activeApplications,
-    closedApplications,
-    responseRate,
-    offerRate,
-    interviewRate,
-  };
-};
-
-// Helper: Compute timing metrics
-export const computeTimingMetrics = (jobs) => {
-  const now = new Date();
-  const currentYear = now.getFullYear();
-  const currentMonth = now.getMonth();
-  
-  // Get start of current week (Sunday)
-  const startOfWeek = new Date(now);
-  startOfWeek.setDate(now.getDate() - now.getDay());
-  startOfWeek.setHours(0, 0, 0, 0);
-  
-  // Get start of current month
-  const startOfMonth = new Date(currentYear, currentMonth, 1);
-
-  const thisWeekJobs = jobs.filter(job => {
-    if (!job.dateApplied) return false;
-    const appliedDate = new Date(job.dateApplied);
-    return appliedDate >= startOfWeek;
-  });
-
-  const thisMonthJobs = jobs.filter(job => {
-    if (!job.dateApplied) return false;
-    const appliedDate = new Date(job.dateApplied);
-    return appliedDate >= startOfMonth;
-  });
-
-  return {
-    thisWeekCount: thisWeekJobs.length,
-    thisMonthCount: thisMonthJobs.length,
-  };
-};

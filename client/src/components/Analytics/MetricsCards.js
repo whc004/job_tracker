@@ -1,5 +1,86 @@
 import React, { useMemo } from 'react';
-import { computeSummaryMetrics, computeTimingMetrics } from '../helpers/analytics';
+// Helper: Compute summary metrics
+export const computeSummaryMetrics = (jobs) => {
+  const totalApplications = jobs.length;
+  
+  const activeApplications = jobs.filter(job => {
+    const status = job.status?.toLowerCase() || '';
+    return !status.includes('reject') && 
+           !status.includes('withdrawn') && 
+           !status.includes('accepted') && 
+           !status.includes('offer accepted');
+  }).length;
+
+  const closedApplications = totalApplications - activeApplications;
+
+  const respondedJobs = jobs.filter(job => {
+    const status = job.status?.toLowerCase() || '';
+    return status && status !== 'applied' && status !== 'submitted';
+  }).length;
+  
+  const responseRate = totalApplications > 0 
+    ? `${((respondedJobs / totalApplications) * 100).toFixed(1)}%`
+    : '0%';
+
+  const offeredJobs = jobs.filter(job => {
+    const status = job.status?.toLowerCase() || '';
+    return status.includes('offer');
+  }).length;
+  
+  const offerRate = totalApplications > 0
+    ? `${((offeredJobs / totalApplications) * 100).toFixed(1)}%`
+    : '0%';
+
+  const interviewJobs = jobs.filter(job => {
+    const status = job.status?.toLowerCase() || '';
+    return status.includes('interview') || status.includes('onsite') || 
+           status.includes('phone screen') || status.includes('technical');
+  }).length;
+  
+  const interviewRate = totalApplications > 0
+    ? `${((interviewJobs / totalApplications) * 100).toFixed(1)}%`
+    : '0%';
+
+  return {
+    totalApplications,
+    activeApplications,
+    closedApplications,
+    responseRate,
+    offerRate,
+    interviewRate,
+  };
+};
+
+
+// Helper: Compute timing metrics
+export const computeTimingMetrics = (jobs) => {
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth();
+  
+  const startOfWeek = new Date(now);
+  startOfWeek.setDate(now.getDate() - now.getDay());
+  startOfWeek.setHours(0, 0, 0, 0);
+  
+  const startOfMonth = new Date(currentYear, currentMonth, 1);
+
+  const thisWeekJobs = jobs.filter(job => {
+    if (!job.dateApplied) return false;
+    const appliedDate = new Date(job.dateApplied);
+    return appliedDate >= startOfWeek;
+  });
+
+  const thisMonthJobs = jobs.filter(job => {
+    if (!job.dateApplied) return false;
+    const appliedDate = new Date(job.dateApplied);
+    return appliedDate >= startOfMonth;
+  });
+
+  return {
+    thisWeekCount: thisWeekJobs.length,
+    thisMonthCount: thisMonthJobs.length,
+  };
+};
 
 const MetricsCards = ({ scopedJobs }) => {
   const summaryMetrics = useMemo(() => computeSummaryMetrics(scopedJobs), [scopedJobs]);

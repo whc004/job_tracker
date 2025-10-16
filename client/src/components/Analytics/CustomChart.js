@@ -30,15 +30,10 @@ const CustomChart = ({ scopedJobs }) => {
       .map(group => {
         const value = computeMetricValue(group.jobs, metric);
         if (value === null) return null;
-        return {
-          label: group.label,
-          value,
-          displayValue: formatValueForDisplay(metric, value),
-        };
-      })
-      .filter(item => item !== null);
+        return {label: group.label,value,displayValue: formatValueForDisplay(metric, value),};
+      }).filter(item => item !== null);
 
-    if (metric === 'count' && (xAxis === 'status' || xAxis === 'applicationState' || xAxis === 'workStyle')) {
+    if (metric === 'count' && [ 'status', 'workArrangement', 'jobType', 'experienceLevel', 'priority', 'applicationState' ].includes(xAxis)) {
       return data.sort((a, b) => b.value - a.value);
     }
     return data;
