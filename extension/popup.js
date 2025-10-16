@@ -1,7 +1,8 @@
-// ========================================
-// POPUP.JS - SERVER-SYNCED APPROACH
-// Job Tracker Extension
-// ========================================
+const DEBUG_LOGGING = false;
+const debugLog = (...args) => { if (DEBUG_LOGGING) console.log(...args); };
+const debugError = (...args) => { if (DEBUG_LOGGING) console.error(...args); };
+const debugWarn = (...args) => { if (DEBUG_LOGGING) console.warn(...args); };
+const ENABLE_SERVER_SYNC = false;
 
 const API_URL = 'https://jobtracker-production-2ed3.up.railway.app/api';
 
@@ -9,16 +10,16 @@ const API_URL = 'https://jobtracker-production-2ed3.up.railway.app/api';
 // INITIALIZATION
 // ========================================
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('🔄 Popup loading...');
+    debugLog('🔄 Popup loading...');
     
     // Check if user ID is set
     chrome.storage.local.get(['userId', 'userIdSet'], function(result) {
         if (result.userIdSet && result.userId) {
-            console.log('✅ User ID found:', result.userId);
+            debugLog('✅ User ID found:', result.userId);
             // User ID is set - show main interface and sync with server
             showMainInterface(result.userId);
         } else {
-            console.log('⚠️ No User ID set');
+            debugLog('⚠️ No User ID set');
             // No user ID - show setup screen
             showSetupScreen();
         }
@@ -102,7 +103,7 @@ async function handleUserIdSubmission() {
     
     // ⭐ IMPORTANT: Verify User ID with server before saving
     try {
-        console.log('🔍 Verifying User ID with server:', inputValue);
+        debugLog('🔍 Verifying User ID with server:', inputValue);
         
         const response = await fetch(`${API_URL}/stats`, {
             method: 'GET',
@@ -115,7 +116,7 @@ async function handleUserIdSubmission() {
         const result = await response.json();
         
         if (response.ok && result.success) {
-            console.log('✅ User ID verified with server');
+            debugLog('✅ User ID verified with server');
             
             // Save the user ID to local storage
             chrome.storage.local.set({
@@ -123,11 +124,11 @@ async function handleUserIdSubmission() {
                 userIdSet: true,
                 userIdSetAt: new Date().toISOString()
             }, function() {
-                console.log('💾 User ID saved to local storage');
+                debugLog('💾 User ID saved to local storage');
                 
                 // Reload all LinkedIn tabs to inject new userId
                 chrome.tabs.query({url: "*://*.linkedin.com/*"}, function(tabs) {
-                    console.log(`🔄 Reloading ${tabs.length} LinkedIn tabs...`);
+                    debugLog(`🔄 Reloading ${tabs.length} LinkedIn tabs...`);
                     tabs.forEach(tab => {
                         chrome.tabs.reload(tab.id);
                     });
@@ -143,7 +144,7 @@ async function handleUserIdSubmission() {
             });
         } else {
             // Server rejected the User ID
-            console.error('❌ Server rejected User ID:', result.message);
+            debugError('❌ Server rejected User ID:', result.message);
             showError(result.message || 'Invalid User ID. Please check and try again.');
             setBtn.textContent = 'Set User ID';
             setBtn.disabled = false;
@@ -151,7 +152,7 @@ async function handleUserIdSubmission() {
         }
         
     } catch (error) {
-        console.error('❌ Error verifying User ID:', error);
+        debugError('❌ Error verifying User ID:', error);
         showError('Could not connect to server. Please check your internet connection and try again.');
         setBtn.textContent = 'Set User ID';
         setBtn.disabled = false;
@@ -169,7 +170,7 @@ async function handleUserIdSubmission() {
 // MAIN INTERFACE - ALWAYS SYNC WITH SERVER
 // ========================================
 async function showMainInterface(userId) {
-    console.log('🎨 Rendering main interface for:', userId);
+    debugLog('🎨 Rendering main interface for:', userId);
     
     // First, show loading state immediately
     document.body.innerHTML = `
@@ -229,12 +230,12 @@ async function showMainInterface(userId) {
 // SERVER SYNC FUNCTION
 // ========================================
 async function syncWithServer(userId) {
-    console.log('🔄 Syncing with server for user:', userId);
+    debugLog('🔄 Syncing with server for user:', userId);
     
     try {
         // Fetch stats from server
         const stats = await fetchJobStats(userId);
-        console.log('📊 Stats received:', stats);
+        debugLog('📊 Stats received:', stats);
         
         // Update last sync time
         updateLastSyncTime();
@@ -244,14 +245,14 @@ async function syncWithServer(userId) {
             renderInstructions();
         } else {
             // Active user - fetch and show recent jobs
-            console.log('📥 Fetching recent jobs...');
+            debugLog('📥 Fetching recent jobs...');
             const recentJobs = await fetchRecentJobs(userId, 3);
-            console.log('✅ Recent jobs received:', recentJobs.length, 'jobs');
+            debugLog('✅ Recent jobs received:', recentJobs.length, 'jobs');
             renderRecentJobs(stats.total, recentJobs, userId);
         }
         
     } catch (error) {
-        console.error('❌ Error syncing with server:', error);
+        debugError('❌ Error syncing with server:', error);
         renderError(userId);
     }
 }
@@ -279,7 +280,7 @@ function setupEventListeners(userId) {
         changeBtn.addEventListener('click', function() {
             if (confirm('Change User ID? Your saved jobs will remain on the server.')) {
                 chrome.storage.local.remove(['userId', 'userIdSet'], function() {
-                    console.log('🗑️ User ID removed from local storage');
+                    debugLog('🗑️ User ID removed from local storage');
                     showSetupScreen();
                 });
             }
@@ -300,7 +301,7 @@ function setupEventListeners(userId) {
     const refreshBtn = document.getElementById('refreshBtn');
     if (refreshBtn) {
         refreshBtn.addEventListener('click', async function() {
-            console.log('🔄 Manual refresh triggered');
+            debugLog('🔄 Manual refresh triggered');
             refreshBtn.textContent = '⏳ Syncing...';
             refreshBtn.disabled = true;
             
@@ -318,7 +319,7 @@ function setupEventListeners(userId) {
 
 async function fetchJobStats(userId, retryCount = 0) {
     try {
-        console.log(`📊 Fetching stats (attempt ${retryCount + 1})...`);
+        debugLog(`📊 Fetching stats (attempt ${retryCount + 1})...`);
         
         const response = await fetch(`${API_URL}/stats`, {
             method: 'GET',
@@ -345,12 +346,12 @@ async function fetchJobStats(userId, retryCount = 0) {
             throw new Error(result.message || 'Failed to fetch stats');
         }
     } catch (error) {
-        console.error(`❌ Error fetching stats (attempt ${retryCount + 1}):`, error);
+        debugError(`❌ Error fetching stats (attempt ${retryCount + 1}):`, error);
         
         // Retry up to 2 times with exponential backoff
         if (retryCount < 2) {
             const delay = Math.pow(2, retryCount) * 1000; // 1s, 2s
-            console.log(`⏳ Retrying in ${delay}ms...`);
+            debugLog(`⏳ Retrying in ${delay}ms...`);
             await new Promise(resolve => setTimeout(resolve, delay));
             return fetchJobStats(userId, retryCount + 1);
         }
@@ -366,7 +367,7 @@ async function fetchJobStats(userId, retryCount = 0) {
 
 async function fetchRecentJobs(userId, limit = 3, retryCount = 0) {
     try {
-        console.log(`📥 Fetching recent jobs (attempt ${retryCount + 1})...`);
+        debugLog(`📥 Fetching recent jobs (attempt ${retryCount + 1})...`);
         
         const response = await fetch(
             `${API_URL}/applications?userId=${userId}`,
@@ -392,12 +393,12 @@ async function fetchRecentJobs(userId, limit = 3, retryCount = 0) {
             throw new Error(result.message || 'Failed to fetch jobs');
         }
     } catch (error) {
-        console.error(`❌ Error fetching recent jobs (attempt ${retryCount + 1}):`, error);
+        debugError(`❌ Error fetching recent jobs (attempt ${retryCount + 1}):`, error);
         
         // Retry up to 2 times
         if (retryCount < 2) {
             const delay = Math.pow(2, retryCount) * 1000;
-            console.log(`⏳ Retrying in ${delay}ms...`);
+            debugLog(`⏳ Retrying in ${delay}ms...`);
             await new Promise(resolve => setTimeout(resolve, delay));
             return fetchRecentJobs(userId, limit, retryCount + 1);
         }

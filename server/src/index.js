@@ -1,5 +1,7 @@
+const ENABLE_SERVER_LOGGING = process.env.ENABLE_SERVER_LOGGING === 'true' ||process.env.NODE_ENV !== 'production';
+const debugLog = (...args) => { if (ENABLE_SERVER_LOGGING) console.log(...args); };
+const debugError = (...args) => { if (ENABLE_SERVER_LOGGING) console.error(...args); };
 // ==================== IMPORTS & CONSTANTS ====================
-const path = require('path');
 const { 
   STATUS_OPTIONS, 
   PRIORITY_OPTIONS,
@@ -8,7 +10,7 @@ const {
   JOB_TYPE_OPTIONS,
   WORK_ARRANGEMENT_OPTIONS,
   EXPERIENCE_LEVEL_OPTIONS
-} = require(path.join(__dirname, '..', 'shared-constants'));
+} = require('../shared-constants');
 
 const express = require('express');
 const mongoose = require('mongoose');
@@ -501,9 +503,9 @@ const connectDB = async () => {
       throw new Error('MONGODB_URI not defined');
     }
     await mongoose.connect(process.env.MONGODB_URI);
-    console.log('✅ MongoDB connected');
+    debugLog('✅ MongoDB connected');
   } catch (error) {
-    console.error('❌ MongoDB error:', error.message);
+    debugError('❌ MongoDB error:', error.message);
   }
 };
 
@@ -511,8 +513,8 @@ const connectDB = async () => {
 const startServer = async () => {
   await connectDB();
   app.listen(PORT, () => {
-    console.log(`✅ Job Tracker API v1.2.0 running on port ${PORT}`);
-    console.log(`🌐 ${PUBLIC_URL}`);
+    debugLog(`✅ Job Tracker API v1.2.0 running on port ${PORT}`);
+    debugLog(`🌐 ${PUBLIC_URL}`);
   });
 };
 

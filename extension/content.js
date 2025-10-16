@@ -1,13 +1,17 @@
-// LinkedIn Job Extractor - Complete Fixed Version
-console.log('Job Tracker content script loading...');
+const DEBUG_LOGGING = false;
+const debugLog = (...args) => { if (DEBUG_LOGGING) console.log(...args); };
+const debugError = (...args) => { if (DEBUG_LOGGING) console.error(...args); };
+const debugWarn = (...args) => { if (DEBUG_LOGGING) console.warn(...args); };
+const ENABLE_SERVER_SYNC = false;
 
-// global variable for common keyword
-const API_URL = 'https://jobtracker-production-2ed3.up.railway.app/api/applications';
+
+// LinkedIn Job Extractor - Complete Fixed Version
+debugLog('Job Tracker content script loading...');
 
 // Wait for constants to be available
 const getConstants = () => {
   if (typeof window.JobTrackerConstants === 'undefined') {
-    console.warn('JobTrackerConstants not yet available');
+    debugWarn('JobTrackerConstants not yet available');
     return null;
   }
   return window.JobTrackerConstants;
@@ -20,7 +24,7 @@ const getConstants = () => {
   setInterval(() => {
     if (location.href !== lastUrl) {
       lastUrl = location.href;
-      console.log('📄 URL changed:', lastUrl);
+      debugLog('📄 URL changed:', lastUrl);
       
       // Wait a bit for LinkedIn to load content, then try adding button
       setTimeout(() => {
@@ -41,7 +45,7 @@ class LinkedInJobExtractor {
   }
 
   async init() {
-    console.log('LinkedInJobExtractor initializing...');
+    debugLog('LinkedInJobExtractor initializing...');
     
     // Initialize user ID first
     await this.initializeUserId();
@@ -59,10 +63,10 @@ class LinkedInJobExtractor {
       chrome.storage.local.get(['userId', 'userIdSet'], (result) => {
         if (result.userIdSet && result.userId) {
           this.userId = result.userId;
-          console.log('✅ User ID loaded:', this.userId);
+          debugLog('✅ User ID loaded:', this.userId);
         } else {
           this.userId = null;
-          console.log('⚠️ No User ID set - user needs to configure it in popup');
+          debugLog('⚠️ No User ID set - user needs to configure it in popup');
         }
         resolve(this.userId);
       });
@@ -78,7 +82,7 @@ class LinkedInJobExtractor {
       const existingButton = document.getElementById('job-tracker-extract-btn');
       
       if (saveButton && !existingButton) {
-        console.log(`✅ Found save button on attempt ${attempts}`);
+        debugLog(`✅ Found save button on attempt ${attempts}`);
         // Only add button if user has set their ID
         if (this.userId) {
           this.addExtractButton();
@@ -95,17 +99,17 @@ class LinkedInJobExtractor {
   }
 
   setupExtractor() {
-    console.log('Setting up extractor...');
+    debugLog('Setting up extractor...');
     
     // If no user ID, don't try to add button
     if (!this.userId) {
-      console.log('⏳ Waiting for user ID to be set before adding button...');
+      debugLog('⏳ Waiting for user ID to be set before adding button...');
       
       // Listen for storage changes (user sets ID in popup)
       chrome.storage.onChanged.addListener((changes, areaName) => {
         if (areaName === 'local' && changes.userId) {
           this.userId = changes.userId.newValue;
-          console.log('✅ User ID updated via popup:', this.userId);
+          debugLog('✅ User ID updated via popup:', this.userId);
           this.waitForSaveButton();
         }
       });
@@ -121,12 +125,12 @@ class LinkedInJobExtractor {
         const success = this.addExtractButton();
         
         if (!success && attempt < maxAttempts) {
-          console.log(`Button add attempt ${attempt} failed, retrying...`);
+          debugLog(`Button add attempt ${attempt} failed, retrying...`);
           retryAddButton(attempt + 1, maxAttempts);
         } else if (success) {
-          console.log('✅ Button successfully added');
+          debugLog('✅ Button successfully added');
         } else {
-          console.log('⚠️ Failed to add button after all attempts');
+          debugLog('⚠️ Failed to add button after all attempts');
         }
       }, delay);
     };
@@ -144,14 +148,14 @@ class LinkedInJobExtractor {
     // Check if button already exists - don't recreate it
     const existingButton = document.getElementById('job-tracker-extract-btn');
     if (existingButton) {
-      console.log('⭐️ Button already exists, skipping...');
+      debugLog('⭐️ Button already exists, skipping...');
       return true; // Button exists, success
     }
 
     // Try multiple possible container locations
     const saveButton = document.querySelector('.jobs-save-button');
     if (!saveButton) {
-      console.log('⚠️ Save button not found, will retry...');
+      debugLog('⚠️ Save button not found, will retry...');
       return false; // Indicate failure
     }
     
@@ -186,7 +190,7 @@ class LinkedInJobExtractor {
     const displayFlexContainer = saveButton.closest('.display-flex');
     if (displayFlexContainer && displayFlexContainer.parentElement) {
       displayFlexContainer.insertAdjacentElement('afterend', button);
-      console.log('✅ Button added successfully');
+      debugLog('✅ Button added successfully');
       return true;
     }
     
@@ -197,11 +201,11 @@ class LinkedInJobExtractor {
       wrapper.style.cssText = 'display: inline-block; margin-left: 8px;';
       wrapper.appendChild(button);
       saveButtonParent.appendChild(wrapper);
-      console.log('✅ Button added (fallback method)');
+      debugLog('✅ Button added (fallback method)');
       return true;
     }
     
-    console.log('❌ Could not find container for button');
+    debugLog('❌ Could not find container for button');
     return false;
   }
 
@@ -213,21 +217,21 @@ class LinkedInJobExtractor {
     const match = url.match(/\/jobs\/view\/(\d+)/);
     
     if (match && match[1]) {
-      console.log('✅ Job ID extracted:', match[1]);
+      debugLog('✅ Job ID extracted:', match[1]);
       return match[1]; // Returns just the ID: "123456"
     }
     
-    console.log('❌ No job ID found in URL:', url);
+    debugLog('❌ No job ID found in URL:', url);
     return null;
   }
 
   extractJobData() {
-    console.log('Extracting job data...');
+    debugLog('Extracting job data...');
     
     // Get constants safely
     const constants = getConstants();
     if (!constants) {
-      console.error('❌ Constants not available yet');
+      debugError('❌ Constants not available yet');
       return null;
     }
     
@@ -236,7 +240,7 @@ class LinkedInJobExtractor {
     
     // Extract LinkedIn Job ID for duplicate detection
     const linkedinJobId = this.extractJobId(jobUrl);
-    console.log('LinkedIn Job ID:', linkedinJobId);
+    debugLog('LinkedIn Job ID:', linkedinJobId);
     
     const currentTimestamp = new Date().toLocaleString();
     const jobDetails = this.extractJobDetails();
@@ -271,7 +275,7 @@ class LinkedInJobExtractor {
     };
 
     this.jobData = data;
-    console.log('Job data extracted:', data);
+    debugLog('Job data extracted:', data);
     return data;
   }
 
@@ -302,7 +306,7 @@ class LinkedInJobExtractor {
       }
     }
     
-    console.log('No job URL found');
+    debugLog('No job URL found');
     return null;
   }
 
@@ -327,12 +331,12 @@ class LinkedInJobExtractor {
       
       if (element && element.textContent.trim()) {
         const position = element.textContent.trim();
-        console.log('✓ SUCCESS - position found:', position);
+        debugLog('✓ SUCCESS - position found:', position);
         return position;
       }
     }
     
-    console.log('All selectors failed - returning fallback');
+    debugLog('All selectors failed - returning fallback');
     return 'Job position Not Found';
   }
 
@@ -355,7 +359,7 @@ class LinkedInJobExtractor {
       }
     }
     
-    console.log('All selectors failed - returning fallback');
+    debugLog('All selectors failed - returning fallback');
     return 'Company Not Found';
   }
 
@@ -540,7 +544,7 @@ class LinkedInJobExtractor {
   }
 
   async extractAndSave() {
-    console.log('Extract and save triggered...');
+    debugLog('Extract and save triggered...');
     
     if (!this.userId) {
       this.showNotification('⚠️ Please set your User ID in the extension popup first!');
@@ -565,9 +569,9 @@ class LinkedInJobExtractor {
   // Handle duplicate detection responses from server
   async saveToServer(data, constants) {
     try {
-      console.log('Sending job to server:', data);
+      debugLog('Sending job to server:', data);
       
-      const response = await fetch(API_URL, {
+      const response = await fetch(constants.API_BASE_URL, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -596,7 +600,7 @@ class LinkedInJobExtractor {
       const result = await response.json();
       
       if (result.success) {
-        console.log('✅ Job saved to server!', result);
+        debugLog('✅ Job saved to server!', result);
         
         // Different messages for update vs new save
         if (result.isUpdate) {
@@ -607,7 +611,7 @@ class LinkedInJobExtractor {
         return true;
       } 
       else {
-        console.error('❌ Server error:', result);
+        debugError('❌ Server error:', result);
         
         const errorMsg = result.message || JSON.stringify(result) || 'Unknown error';
   
@@ -620,7 +624,7 @@ class LinkedInJobExtractor {
         return false;
       }
     } catch (error) {
-      console.error('❌ Network error:', error);
+      debugError('❌ Network error:', error);
       this.showNotification('❌ Connection failed. Check your internet.');
       return false;
     }
@@ -701,7 +705,7 @@ class LinkedInJobExtractor {
       
       if (urlChanged) {
         lastJobUrl = currentUrl;
-        console.log('📄 URL changed:', currentUrl);
+        debugLog('📄 URL changed:', currentUrl);
       }
       
       clearTimeout(debounceTimer);
@@ -713,11 +717,11 @@ class LinkedInJobExtractor {
         const existingButton = document.getElementById('job-tracker-extract-btn');
         
         if (saveButton && !existingButton && this.userId) {
-          console.log('➕ Adding button to new job...');
+          debugLog('➕ Adding button to new job...');
           this.addExtractButton();
           this.extractJobData();
         } else if (existingButton && !saveButton) {
-          console.log('🗑️ Removing orphaned button...');
+          debugLog('🗑️ Removing orphaned button...');
           existingButton.remove();
         }
         
@@ -733,7 +737,7 @@ class LinkedInJobExtractor {
       attributes: false
     });
     
-    console.log('✅ Observer initialized');
+    debugLog('✅ Observer initialized');
   }
 }
 
@@ -749,11 +753,11 @@ const waitForConstants = async () => {
   
   if (!window.JobTrackerConstants) {
     const errorMsg = '❌ CRITICAL: Constants failed to load. This is a manifest/loading order issue.';
-    console.error(errorMsg);
+    debugError(errorMsg);
     throw new Error(errorMsg);
   }
   
-  console.log('✅ Constants loaded successfully');
+  debugLog('✅ Constants loaded successfully');
   return window.JobTrackerConstants;
 };
 
@@ -764,30 +768,30 @@ const waitForConstants = async () => {
     const jobExtractor = new LinkedInJobExtractor();
     window.jobExtractor = jobExtractor;
   } catch (error) {
-    console.error('Failed to initialize Job Extractor:', error);
+    debugError('Failed to initialize Job Extractor:', error);
   }
 })();
 
 // Listen for messages from popup
 chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
-  console.log('Message received:', request);
+  debugLog('Message received:', request);
   
   if (request.action === 'getCurrentJob') {
     const jobData = window.jobExtractor ? window.jobExtractor.extractJobData() : null;
     sendResponse({jobData: jobData});
   } else if (request.action === 'logDebugData') {
-    console.log('%c=== JOB TRACKER DEBUG ===', 'color: blue; font-size: 16px; font-weight: bold;');
-    console.log('User ID:', window.jobExtractor?.userId);
-    console.log('Current Job Data:', window.jobExtractor?.extractJobData());
+    debugLog('%c=== JOB TRACKER DEBUG ===', 'color: blue; font-size: 16px; font-weight: bold;');
+    debugLog('User ID:', window.jobExtractor?.userId);
+    debugLog('Current Job Data:', window.jobExtractor?.extractJobData());
     
     chrome.storage.local.get(['savedJobs', 'userId'], (result) => {
-      console.log('Storage User ID:', result.userId);
-      console.log('Stored Jobs:', result.savedJobs);
-      console.log('Total Jobs:', result.savedJobs?.length || 0);
+      debugLog('Storage User ID:', result.userId);
+      debugLog('Stored Jobs:', result.savedJobs);
+      debugLog('Total Jobs:', result.savedJobs?.length || 0);
     });
     
     sendResponse({success: true});
   }
 });
 
-console.log('Job Tracker content script loaded successfully');
+debugLog('Job Tracker content script loaded successfully');
