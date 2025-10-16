@@ -1,4 +1,4 @@
-// THIS IS A Client OF shared-constants.js
+// THIS IS A COPY OF shared-constants.js
 
 // ==================== JOB STATUS ====================
 const JOB_STATUS = {
@@ -33,34 +33,29 @@ const INTERVIEW_STATUSES = [
   JOB_STATUS.INTERVIEW_ROUND_5
 ];
 
-
-// Status colors for UI (for client and extension)
 const STATUS_COLORS = {
-  [JOB_STATUS.APPLIED]: '#3b82f6', // blue
-  [JOB_STATUS.INTERVIEW_ROUND_1]: '#8b5cf6', // purple
+  [JOB_STATUS.APPLIED]: '#3b82f6',
+  [JOB_STATUS.INTERVIEW_ROUND_1]: '#8b5cf6',
   [JOB_STATUS.INTERVIEW_ROUND_2]: '#8b5cf6',
   [JOB_STATUS.INTERVIEW_ROUND_3]: '#8b5cf6',
   [JOB_STATUS.INTERVIEW_ROUND_4]: '#8b5cf6',
-  [JOB_STATUS.INTERVIEW_ROUND_5_TO_10]: '#8b5cf6',
-  [JOB_STATUS.OFFER]: '#10b981', // green
-  [JOB_STATUS.REJECTED]: '#ef4444', // red
-  [JOB_STATUS.NO_RESPONSE]: '#6b7280' // gray
+  [JOB_STATUS.INTERVIEW_ROUND_5]: '#8b5cf6',
+  [JOB_STATUS.OFFER]: '#10b981',
+  [JOB_STATUS.REJECTED]: '#ef4444',
+  [JOB_STATUS.NO_RESPONSE]: '#6b7280'
 };
 
-// ==================== PRIORITY LEVELS (SIMPLIFIED) ====================
+// ==================== PRIORITY ====================
 const PRIORITY_LEVELS = {
   NORMAL: 'Normal',
   STAR: 'Star'
 };
 
-const PRIORITY_OPTIONS = [
-  PRIORITY_LEVELS.NORMAL,
-  PRIORITY_LEVELS.STAR
-];
+const PRIORITY_OPTIONS = [PRIORITY_LEVELS.NORMAL, PRIORITY_LEVELS.STAR];
 
 const PRIORITY_COLORS = {
-  [PRIORITY_LEVELS.NORMAL]: '#6b7280', // gray
-  [PRIORITY_LEVELS.STAR]: '#fbbf24' // yellow/gold star
+  [PRIORITY_LEVELS.NORMAL]: '#6b7280',
+  [PRIORITY_LEVELS.STAR]: '#fbbf24'
 };
 
 const PRIORITY_ICONS = {
@@ -89,6 +84,15 @@ const JOB_TYPE_OPTIONS = [
   JOB_TYPES.TEMPORARY
 ];
 
+// Synonyms used by extractors (lowercased)
+const JOB_TYPE_SYNONYMS = {
+  FULL_TIME: ['full-time', 'full time'],
+  PART_TIME: ['part-time', 'part time'],
+  CONTRACT: ['contract', 'contractor'],
+  TEMPORARY: ['temporary', 'temp'],
+  INTERNSHIP: ['internship', 'intern']
+};
+
 // ==================== WORK ARRANGEMENT ====================
 const WORK_ARRANGEMENTS = {
   NOT_SPECIFIED: 'Not specified',
@@ -103,6 +107,12 @@ const WORK_ARRANGEMENT_OPTIONS = [
   WORK_ARRANGEMENTS.HYBRID,
   WORK_ARRANGEMENTS.ON_SITE
 ];
+
+const WORK_ARRANGEMENT_SYNONYMS = {
+  REMOTE: ['remote', 'fully remote', '100% remote', 'remote-first'],
+  HYBRID: ['hybrid'],
+  ON_SITE: ['on-site', 'onsite', 'on site']
+};
 
 // ==================== EXPERIENCE LEVELS ====================
 const EXPERIENCE_LEVELS = {
@@ -125,54 +135,76 @@ const EXPERIENCE_LEVEL_OPTIONS = [
   EXPERIENCE_LEVELS.EXECUTIVE
 ];
 
-// ==================== TECHNICAL KEYWORDS ====================
+const EXPERIENCE_SYNONYMS = {
+  INTERNSHIP: ['internship', 'intern'],
+  ENTRY: ['entry level', 'entry-level', 'junior', 'jr', 'jr.'],
+  ASSOCIATE: ['associate'],
+  MID_SENIOR: ['mid level', 'mid-level', 'midlevel', 'mid', 'senior', 'sr', 'sr.', 'staff', 'lead', 'principal'],
+  DIRECTOR: ['director'],
+  EXECUTIVE: ['executive', 'vp', 'vice president', 'head', 'chief', 'cto', 'ceo', 'cpo', 'cso', 'cio']
+};
+
+// ==================== SELECTORS (LinkedIn DOM) ====================
+// those items above apply btn
+const SELECTORS = {
+  PREFERENCE_STRONG: '.job-details-fit-level-preferences .tvm__text strong',
+  INSIGHT_TEXT: [
+    '.job-details-jobs-unified-top-card__job-insight .tvm__text',
+    '.jobs-unified-top-card__job-insight .tvm__text',
+    '.jobs-description-content__text',
+    '.jobs-box__html-content'
+  ]
+};
+
+// ==================== TECHNICAL TERMS / ROLES ====================
 const TECHNICAL_TERMS = [
-  // Programming Languages
-  'JavaScript', 'TypeScript', 'Python', 'Java', 'C\\+\\+', 'C#', 'Go', 'Rust', 'Ruby', 'PHP', 
-  'Swift', 'Kotlin', 'Scala', 'R', 'MATLAB', 'Perl', 'Objective-C', 'Dart', 'Elixir',
-  
-  // Frontend
-  'React', 'Angular', 'Vue', 'Svelte', 'Next\\.js', 'Nuxt', 'HTML', 'CSS', 'SASS', 'SCSS', 
-  'Tailwind', 'Bootstrap', 'jQuery', 'Webpack', 'Vite', 'Babel', 'Redux', 'MobX',
-  
-  // Backend/Frameworks
-  'Node\\.js', 'Express', 'Django', 'Flask', 'FastAPI', 'Spring', 'ASP\\.NET', 'Rails', 
-  'Laravel', 'NestJS', 'Gin', 'Fiber',
-  
-  // Databases
-  'SQL', 'PostgreSQL', 'MySQL', 'MongoDB', 'Redis', 'Elasticsearch', 'Cassandra', 
-  'DynamoDB', 'Oracle', 'SQLite', 'MariaDB', 'Neo4j', 'Snowflake',
-  
-  // Cloud/DevOps
-  'AWS', 'Azure', 'GCP', 'Docker', 'Kubernetes', 'Jenkins', 'GitLab', 'CircleCI', 
-  'Terraform', 'Ansible', 'CI/CD', 'DevOps', 'Prometheus', 'Grafana', 'ELK',
-  
-  // Data Science/ML
-  'TensorFlow', 'PyTorch', 'Scikit-learn', 'Pandas', 'NumPy', 'Keras', 'Spark', 
-  'Hadoop', 'Airflow', 'Tableau', 'Power BI', 'Machine Learning', 'Deep Learning',
-  'AI', 'Data Science', 'NLP', 'Computer Vision',
-  
-  // Mobile
-  'iOS', 'Android', 'React Native', 'Flutter', 'SwiftUI', 'Jetpack Compose',
-  
-  // Tools & Practices
-  'Git', 'GitHub', 'Jira', 'Confluence', 'Agile', 'Scrum', 'Kanban', 'API', 'REST', 
-  'GraphQL', 'gRPC', 'Microservices', 'Linux', 'Bash', 'Shell',
-  
-  // Design
-  'Figma', 'Sketch', 'Adobe XD', 'Photoshop', 'Illustrator', 'InVision'
+  'JavaScript','TypeScript','Python','Java','C\\+\\+','C#','Go','Rust','Ruby','PHP',
+  'Swift','Kotlin','Scala','R','MATLAB','Perl','Objective-C','Dart','Elixir',
+  'React','Angular','Vue','Svelte','Next\\.js','Nuxt','HTML','CSS','SASS','SCSS',
+  'Tailwind','Bootstrap','jQuery','Webpack','Vite','Babel','Redux','MobX',
+  'Node\\.js','Express','Django','Flask','FastAPI','Spring','ASP\\.NET','Rails',
+  'Laravel','NestJS','Gin','Fiber',
+  'SQL','PostgreSQL','MySQL','MongoDB','Redis','Elasticsearch','Cassandra',
+  'DynamoDB','Oracle','SQLite','MariaDB','Neo4j','Snowflake',
+  'AWS','Azure','GCP','Docker','Kubernetes','Jenkins','GitLab','CircleCI',
+  'Terraform','Ansible','CI/CD','DevOps','Prometheus','Grafana','ELK',
+  'TensorFlow','PyTorch','Scikit-learn','Pandas','NumPy','Keras','Spark',
+  'Hadoop','Airflow','Tableau','Power BI','Machine Learning','Deep Learning',
+  'AI','Data Science','NLP','Computer Vision',
+  'iOS','Android','React Native','Flutter','SwiftUI','Jetpack Compose',
+  'Git','GitHub','Jira','Confluence','Agile','Scrum','Kanban','API','REST',
+  'GraphQL','gRPC','Microservices','Linux','Bash','Shell',
+  'Figma','Sketch','Adobe XD','Photoshop','Illustrator','InVision'
+];
+
+const ROLE_TITLES = [
+  'Manager','Engineering Manager','Product Manager','Project Manager','Program Manager','People Manager',
+  'Software Engineer','Frontend Engineer','Backend Engineer','Full Stack Engineer',
+  'Data Engineer','Machine Learning Engineer','DevOps Engineer','SRE','QA Engineer','Test Engineer','Mobile Engineer',
+  'Team Lead','Tech Lead','Lead Engineer','Architect','Director','Head of Engineering','VP Engineering'
+];
+
+const KEYWORD_GROUPS = {
+  TECHNICAL: TECHNICAL_TERMS,
+  ROLES: ROLE_TITLES
+};
+
+// ==================== SALARY / WORD LISTS ====================
+const SALARY_REGEX =
+  '(?:usd?\\s*)?\\$?\\s?\\d{1,3}(?:,\\d{3})*(?:\\.\\d+)?\\s*(?:[kK])?(?:\\s*[-–—]\\s*(?:usd?\\s*)?\\$?\\s?\\d{1,3}(?:,\\d{3})*(?:\\.\\d+)?\\s*(?:[kK])?)?';
+
+const COMMON_WORDS = [
+  'the','and','for','with','you','are','will','have','this','that',
+  'our','we','all','can','your','from','not','but','inc','llc','ltd',
+  'of','to','in','on','at','by','as','a','an','or'
 ];
 
 // ==================== TIMEZONES ====================
-// Common timezones for job applications
 const TIMEZONES = {
-  // US Timezones
   US_PACIFIC: 'America/Los_Angeles',
   US_MOUNTAIN: 'America/Denver',
   US_CENTRAL: 'America/Chicago',
   US_EASTERN: 'America/New_York',
-  
-  // International Timezones
   UTC: 'UTC',
   LONDON: 'Europe/London',
   PARIS: 'Europe/Paris',
@@ -188,7 +220,6 @@ const TIMEZONES = {
   SAO_PAULO: 'America/Sao_Paulo'
 };
 
-// Timezone display names for dropdowns
 const TIMEZONE_OPTIONS = [
   { value: TIMEZONES.US_PACIFIC, label: 'Pacific Time (PT) - Los Angeles', offset: 'UTC-8' },
   { value: TIMEZONES.US_MOUNTAIN, label: 'Mountain Time (MT) - Denver', offset: 'UTC-7' },
@@ -209,16 +240,13 @@ const TIMEZONE_OPTIONS = [
   { value: TIMEZONES.SAO_PAULO, label: 'São Paulo (BRT)', offset: 'UTC-3' }
 ];
 
-// Helper function to get user's local timezone
-const getUserTimezone = () => {
-  return Intl.DateTimeFormat().resolvedOptions().timeZone;
-};
-
-// ==================== DASHBOARD URL ====================
+// ==================== DASHBOARD / API ====================
 const DASHBOARD_URL = 'https://your-dashboard.railway.app';
 
-// ==================== API ENDPOINTS ====================
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+const API_BASE_URL =
+  (typeof process !== 'undefined' && process.env && process.env.REACT_APP_API_URL)
+    ? process.env.REACT_APP_API_URL
+    : 'https://jobtracker-production-2ed3.up.railway.app/api/applications';
 
 const API_ENDPOINTS = {
   JOBS: '/api/jobs',
@@ -229,7 +257,7 @@ const API_ENDPOINTS = {
   CONSTANTS: '/api/constants'
 };
 
-// ==================== LOCAL STORAGE KEYS ====================
+// ==================== STORAGE / VALIDATION / DATES ====================
 const STORAGE_KEYS = {
   USER_ID: 'jobtracker_user_id',
   THEME: 'jobtracker_theme',
@@ -238,7 +266,6 @@ const STORAGE_KEYS = {
   TIMEZONE: 'jobtracker_timezone'
 };
 
-// ==================== VALIDATION RULES ====================
 const VALIDATION = {
   MIN_COMPANY_LENGTH: 1,
   MAX_COMPANY_LENGTH: 200,
@@ -251,39 +278,45 @@ const VALIDATION = {
   URL_REGEX: /^https?:\/\/.+/
 };
 
-// ==================== DATE FORMATS ====================
 const DATE_FORMATS = {
   DISPLAY: 'MMM DD, YYYY',
   DISPLAY_WITH_TIME: 'MMM DD, YYYY HH:mm',
   API: 'YYYY-MM-DD',
   FULL: 'MMMM DD, YYYY HH:mm:ss',
   TIME_ONLY: 'HH:mm',
-  DATE_INPUT: 'YYYY-MM-DD' // for HTML date input
+  DATE_INPUT: 'YYYY-MM-DD'
 };
 
-// ==================== EXPORT FOR DIFFERENT ENVIRONMENTS ====================
 
+// ==================== EXPORT FOR DIFFERENT ENVIRONMENTS ====================
 
 // For React Client
 export {
   JOB_STATUS,
   STATUS_OPTIONS,
-  STATUS_COLORS,
   INTERVIEW_STATUSES,
+  STATUS_COLORS,
   PRIORITY_LEVELS,
   PRIORITY_OPTIONS,
   PRIORITY_COLORS,
   PRIORITY_ICONS,
   JOB_TYPES,
   JOB_TYPE_OPTIONS,
+  JOB_TYPE_SYNONYMS,
   WORK_ARRANGEMENTS,
   WORK_ARRANGEMENT_OPTIONS,
+  WORK_ARRANGEMENT_SYNONYMS,
   EXPERIENCE_LEVELS,
   EXPERIENCE_LEVEL_OPTIONS,
+  EXPERIENCE_SYNONYMS,
+  SELECTORS,
   TECHNICAL_TERMS,
+  ROLE_TITLES,
+  KEYWORD_GROUPS,
+  SALARY_REGEX,
+  COMMON_WORDS,
   TIMEZONES,
   TIMEZONE_OPTIONS,
-  getUserTimezone,
   DASHBOARD_URL,
   API_BASE_URL,
   API_ENDPOINTS,

@@ -1,8 +1,17 @@
-// LinkedIn Job Extractor - Complete Fixed Version with Duplicate Detection
+// LinkedIn Job Extractor - Complete Fixed Version
 console.log('Job Tracker content script loading...');
 
 // global variable for common keyword
 const API_URL = 'https://jobtracker-production-2ed3.up.railway.app/api/applications';
+
+// Wait for constants to be available
+const getConstants = () => {
+  if (typeof window.JobTrackerConstants === 'undefined') {
+    console.warn('JobTrackerConstants not yet available');
+    return null;
+  }
+  return window.JobTrackerConstants;
+};
 
 (function() {
   let lastUrl = location.href;
@@ -11,7 +20,7 @@ const API_URL = 'https://jobtracker-production-2ed3.up.railway.app/api/applicati
   setInterval(() => {
     if (location.href !== lastUrl) {
       lastUrl = location.href;
-      console.log('🔄 URL changed:', lastUrl);
+      console.log('📄 URL changed:', lastUrl);
       
       // Wait a bit for LinkedIn to load content, then try adding button
       setTimeout(() => {
@@ -50,10 +59,10 @@ class LinkedInJobExtractor {
       chrome.storage.local.get(['userId', 'userIdSet'], (result) => {
         if (result.userIdSet && result.userId) {
           this.userId = result.userId;
-          console.log('User ID loaded:', this.userId);
+          console.log('✅ User ID loaded:', this.userId);
         } else {
           this.userId = null;
-          console.log('No User ID set - user needs to configure it in popup');
+          console.log('⚠️ No User ID set - user needs to configure it in popup');
         }
         resolve(this.userId);
       });
@@ -61,29 +70,48 @@ class LinkedInJobExtractor {
   }
 
   waitForSaveButton(maxAttempts = 15) {
-  let attempts = 0;
-  
-  const checkForButton = () => {
-    attempts++;
-    const saveButton = document.querySelector('.jobs-save-button');
-    const existingButton = document.getElementById('job-tracker-extract-btn');
+    let attempts = 0;
     
-    if (saveButton && !existingButton) {
-      console.log(`✅ Found save button on attempt ${attempts}`);
-      this.addExtractButton();
-      return;
-    }
+    const checkForButton = () => {
+      attempts++;
+      const saveButton = document.querySelector('.jobs-save-button');
+      const existingButton = document.getElementById('job-tracker-extract-btn');
+      
+      if (saveButton && !existingButton) {
+        console.log(`✅ Found save button on attempt ${attempts}`);
+        // Only add button if user has set their ID
+        if (this.userId) {
+          this.addExtractButton();
+        }
+        return;
+      }
+      
+      if (attempts < maxAttempts) {
+        setTimeout(checkForButton, 500);
+      }
+    };
     
-    if (attempts < maxAttempts) {
-      setTimeout(checkForButton, 500);
-    }
-  };
-  
-  checkForButton();
-}
+    checkForButton();
+  }
 
   setupExtractor() {
     console.log('Setting up extractor...');
+    
+    // If no user ID, don't try to add button
+    if (!this.userId) {
+      console.log('⏳ Waiting for user ID to be set before adding button...');
+      
+      // Listen for storage changes (user sets ID in popup)
+      chrome.storage.onChanged.addListener((changes, areaName) => {
+        if (areaName === 'local' && changes.userId) {
+          this.userId = changes.userId.newValue;
+          console.log('✅ User ID updated via popup:', this.userId);
+          this.waitForSaveButton();
+        }
+      });
+      
+      return;
+    }
     
     // Retry adding button multiple times with increasing delays
     const retryAddButton = (attempt = 1, maxAttempts = 5) => {
@@ -116,7 +144,7 @@ class LinkedInJobExtractor {
     // Check if button already exists - don't recreate it
     const existingButton = document.getElementById('job-tracker-extract-btn');
     if (existingButton) {
-      console.log('⏭️ Button already exists, skipping...');
+      console.log('⭐️ Button already exists, skipping...');
       return true; // Button exists, success
     }
 
@@ -196,6 +224,13 @@ class LinkedInJobExtractor {
   extractJobData() {
     console.log('Extracting job data...');
     
+    // Get constants safely
+    const constants = getConstants();
+    if (!constants) {
+      console.error('❌ Constants not available yet');
+      return null;
+    }
+    
     let jobUrl = this.extractJobURL(window.location.href);
     if (!jobUrl) jobUrl = window.location.href;
     
@@ -204,16 +239,18 @@ class LinkedInJobExtractor {
     console.log('LinkedIn Job ID:', linkedinJobId);
     
     const currentTimestamp = new Date().toLocaleString();
-    
+    const jobDetails = this.extractJobDetails();
+
     const data = {
       // Core job information
       position: this.extractJobposition(),
       company: this.extractCompanyName(),
       location: this.extractLocation(),
-      jobType: this.extractJobType(),
-      salary: this.extractSalary(),
-      experienceLevel: this.extractExperienceLevel(),
-      workArrangement: this.extractWorkArrangement(),
+
+      jobType: jobDetails.jobType,
+      salary: jobDetails.salary,
+      experienceLevel: jobDetails.experienceLevel,
+      workArrangement: jobDetails.workArrangement,
       
       // Skills and keywords
       keywords: this.extractKeywords(),
@@ -224,10 +261,10 @@ class LinkedInJobExtractor {
       extractedAt: currentTimestamp,
         
       // Application tracking fields
-      applicationStatus: window.JobTrackerConstants.JOB_STATUS.APPLIED,
-      applicationDate: new Date().toISOString(),
+      applicationStatus: constants.JOB_STATUS.APPLIED,
+      applicationDate: new Date().toISOString().split('T')[0],
       notes: '',
-      priority: window.JobTrackerConstants.PRIORITY_LEVELS.NORMAL,
+      priority: constants.PRIORITY_LEVELS.NORMAL,
       
       // User identification
       userId: this.userId
@@ -347,114 +384,134 @@ class LinkedInJobExtractor {
     return 'Location Not Found';
   }
 
-  extractJobType() {
-    const preferenceButtons = document.querySelectorAll('.job-details-fit-level-preferences .tvm__text strong');
-    
-    for (const button of preferenceButtons) {
-      const text = button.textContent.trim().toLowerCase();
-      
-      if (text.includes('full-time') || text.includes('full time')) return 'Full-time';
-      if (text.includes('part-time') || text.includes('part time')) return 'Part-time';
-      if (text.includes('contract')) return 'Contract';
-      if (text.includes('temporary') || text.includes('temp')) return 'Temporary';
-      if (text.includes('internship') || text.includes('intern')) return 'Internship';
+  // Extract all job details using SYNONYMS from constants
+  extractJobDetails() {
+    const constants = window.JobTrackerConstants;
+    if (!constants) {
+      return {
+        jobType: 'Not specified',
+        workArrangement: 'Not specified',
+        experienceLevel: 'Not specified',
+        salary: ''
+      };
     }
-    
-    const selectors = [
-      '.job-details-jobs-unified-top-card__job-insight .tvm__text',
-      '.jobs-unified-top-card__job-insight .tvm__text'
-    ];
-    
-    for (const selector of selectors) {
-      const elements = document.querySelectorAll(selector);
-      for (const element of elements) {
-        const text = element.textContent.toLowerCase().trim();
-        
-        if (text.includes('full-time') || text.includes('full time')) return 'Full-time';
-        if (text.includes('part-time') || text.includes('part time')) return 'Part-time';
-        if (text.includes('contract')) return 'Contract';
-        if (text.includes('temporary') || text.includes('temp')) return 'Temporary';
-        if (text.includes('intern') || text.includes('internship')) return 'Internship';
-      }
-    }
-    
-    return window.JobTrackerConstants.JOB_TYPE.NOT_SPECIFIED;
-  }
+    const result = {
+      jobType: constants.JOB_TYPES.NOT_SPECIFIED,
+      workArrangement: constants.WORK_ARRANGEMENTS.NOT_SPECIFIED,
+      experienceLevel: constants.EXPERIENCE_LEVELS.NOT_SPECIFIED,
+      salary: ''
+    };
 
-  extractWorkArrangement() {
+    // Single query for preference buttons
     const preferenceButtons = document.querySelectorAll('.job-details-fit-level-preferences .tvm__text strong');
-    
     for (const button of preferenceButtons) {
-      const text = button.textContent.trim().toLowerCase();
+      const text = (button.textContent || '').trim().toLowerCase();
       
-      if (text === 'remote' || text === 'fully remote') return 'Remote';
-      if (text === 'hybrid') return 'Hybrid';
-      if (text === 'on-site' || text === 'onsite') return 'On-site';
-    }
-    
-    const pageText = document.body.textContent.toLowerCase();
-    
-    if (pageText.includes('fully remote') || pageText.includes('100% remote')) return 'Remote';
-    if (pageText.includes('hybrid')) return 'Hybrid';
-    if (pageText.includes('on-site') || pageText.includes('onsite')) return 'On-site';
-    
-    return window.JobTrackerConstants.WORK_ARRANGEMENT.NOT_SPECIFIED;
-  }
-
-  extractSalary() {
-    const preferenceButtons = document.querySelectorAll('.job-details-fit-level-preferences .tvm__text strong');
-    
-    for (const button of preferenceButtons) {
-      const text = button.textContent.trim();
-      if (/\$[\d,]+[Kk]?/.test(text)) {
-        return text;
+      // ========== JOB TYPE ==========
+      if (result.jobType === constants.JOB_TYPES.NOT_SPECIFIED) {
+        for (const [typeKey, synonyms] of Object.entries(constants.JOB_TYPE_SYNONYMS || {})) {
+          if (synonyms.some(syn => text.includes(syn))) {
+            result.jobType = constants.JOB_TYPES[typeKey];
+            break;
+          }
+        }
       }
-    }
-    
-    const selectors = [
-      '.job-details-jobs-unified-top-card__job-insight .tvm__text',
-      '.jobs-unified-top-card__job-insight .tvm__text'
-    ];
-    
-    for (const selector of selectors) {
-      const elements = document.querySelectorAll(selector);
-      for (const element of elements) {
-        const text = element.textContent.trim();
-        if (/\$[\d,]+[Kk]?/.test(text)) {
-          return text;
+
+      // ========== WORK ARRANGEMENT ==========
+      if (result.workArrangement === constants.WORK_ARRANGEMENTS.NOT_SPECIFIED) {
+        for (const [arrangementKey, synonyms] of Object.entries(constants.WORK_ARRANGEMENT_SYNONYMS || {})) {
+          if (synonyms.some(syn => text.includes(syn))) {
+            result.workArrangement = constants.WORK_ARRANGEMENTS[arrangementKey];
+            break;
+          }
+        }
+      }
+
+      // ========== SALARY ==========
+      if (!result.salary && /\$[\d,]+[Kk]?/.test(text)) {
+        result.salary = (button.textContent || '').trim();
+      }
+
+      // ========== EXPERIENCE LEVEL ==========
+      if (result.experienceLevel === constants.EXPERIENCE_LEVELS.NOT_SPECIFIED) {
+        for (const [levelKey, synonyms] of Object.entries(constants.EXPERIENCE_SYNONYMS || {})) {
+          if (synonyms.some(syn => text.includes(syn))) {
+            result.experienceLevel = constants.EXPERIENCE_LEVELS[levelKey];
+            break;
+          }
         }
       }
     }
-    
-    return window.JobTrackerConstants.JOB_TYPE.NOT_SPECIFIED;
+
+    // Second pass: check job insight sections if we missed anything
+    const selectors = constants.SELECTORS?.INSIGHT_TEXT || [
+      '.job-details-jobs-unified-top-card__job-insight .tvm__text',
+      '.jobs-unified-top-card__job-insight .tvm__text'];
+
+    for (const selector of selectors) {
+      const elements = document.querySelectorAll(selector);
+      for (const element of elements) {
+        const text = (element.textContent || '').toLowerCase().trim();
+
+        // Fill in missing job type
+        if (result.jobType === constants.JOB_TYPES.NOT_SPECIFIED) {
+          for (const [typeKey, synonyms] of Object.entries(constants.JOB_TYPE_SYNONYMS || {})) {
+            if (synonyms.some(syn => text.includes(syn))) {
+              result.jobType = constants.JOB_TYPES[typeKey];
+              break;
+            }
+          }
+        }
+
+        // Fill in missing salary
+        if (!result.salary && /\$[\d,]+[Kk]?/.test(text)) {
+          result.salary = (element.textContent || '').trim();
+        }
+      }
+    }
+
+    // Third pass: Check page text and position
+    const pageText = (document.body.textContent || '').toLowerCase();
+    const position = this.extractJobposition().toLowerCase();
+
+    // ========== WORK ARRANGEMENT (from page text) ==========
+    if (result.workArrangement === constants.WORK_ARRANGEMENTS.NOT_SPECIFIED) {
+      for (const [arrangementKey, synonyms] of Object.entries(constants.WORK_ARRANGEMENT_SYNONYMS || {})) {
+        if (synonyms.some(syn => pageText.includes(syn))) {
+          result.workArrangement = constants.WORK_ARRANGEMENTS[arrangementKey];
+          break;
+        }
+      }
+    }
+
+    // ========== EXPERIENCE LEVEL (from position title) ==========
+    if (result.experienceLevel === constants.EXPERIENCE_LEVELS.NOT_SPECIFIED) {
+      for (const [levelKey, synonyms] of Object.entries(constants.EXPERIENCE_SYNONYMS || {})) {
+        if (synonyms.some(syn => position.includes(syn))) {
+          result.experienceLevel = constants.EXPERIENCE_LEVELS[levelKey];
+          break;
+        }
+      }
+    }
+
+    // Fallback: check page text for experience level
+    if (result.experienceLevel === constants.EXPERIENCE_LEVELS.NOT_SPECIFIED) {
+      for (const [levelKey, synonyms] of Object.entries(constants.EXPERIENCE_SYNONYMS || {})) {
+        if (synonyms.some(syn => pageText.includes(syn))) {
+          result.experienceLevel = constants.EXPERIENCE_LEVELS[levelKey];
+          break;
+        }
+      }
+    }
+
+    return result;
   }
 
-  extractExperienceLevel() {
-    const preferenceButtons = document.querySelectorAll('.job-details-fit-level-preferences .tvm__text strong');
-    
-    for (const button of preferenceButtons) {
-      const text = button.textContent.trim().toLowerCase();
-      
-      if (text.includes('entry level') || text.includes('junior')) return 'Entry Level';
-      if (text.includes('senior') || text.includes('lead')) return 'Senior Level';
-      if (text.includes('mid level') || text.includes('mid-level')) return 'Mid Level';
-      if (text.includes('director') || text.includes('principal')) return 'Executive Level';
-    }
-    
-    const position = this.extractJobposition().toLowerCase();
-    if (position.includes('senior') || position.includes('sr.') || position.includes('staff')) return 'Senior Level';
-    if (position.includes('junior') || position.includes('jr.')) return 'Entry Level';
-    if (position.includes('lead') || position.includes('principal')) return 'Senior Level';
-    if (position.includes('director')) return 'Executive Level';
-    if (position.includes('intern')) return 'Entry Level';
-    
-    return window.JobTrackerConstants.EXPERIENCE_LEVEL.NOT_SPECIFIED;
-  }
 
   extractKeywords() {
+
     const keywords = new Set();
-    
-    const pattern = new RegExp(`\\b(${window.JobTrackerConstants.TECHNICAL_TERMS.join('|')})\\b`, 'gi');
+    const pattern = new RegExp(`\\b(${constants.TECHNICAL_TERMS.join('|')})\\b`, 'gi');
     
     const content = document.querySelector('.jobs-description-content__text, .jobs-box__html-content');
     if (content) {
@@ -471,21 +528,13 @@ class LinkedInJobExtractor {
     if (position !== 'Job position Not Found') {
       position.split(/[\s,\-\(\)]+/).forEach(word => {
         const cleaned = word.replace(/[!.?]/g, '').trim();
-        if (cleaned.length > 2 && !this.isCommonWord(cleaned)) {
+        if (cleaned.length > 2 && !(constants.EXPERIENCE_LEVELS.COMMON_WORDS.includes(word.toLowerCase()))) {
           keywords.add(cleaned);
         }
       });
     }
   
     return Array.from(keywords);
-  }
-
-  isCommonWord(word) {
-    const commonWords = [
-      'the', 'and', 'for', 'with', 'you', 'are', 'will', 'have', 'this', 'that', 
-      'our', 'we', 'all', 'can', 'your', 'from', 'not', 'but', 'Inc', 'LLC', 'Ltd'
-    ];
-    return commonWords.includes(word.toLowerCase());
   }
 
   async extractAndSave() {
@@ -495,12 +544,24 @@ class LinkedInJobExtractor {
       this.showNotification('⚠️ Please set your User ID in the extension popup first!');
       return;
     }
+
+    const constants = getConstants();
+    if (!constants) {
+      this.showNotification('❌ Extension not fully initialized. Refresh the page and try again.');
+      return;
+    }
+
     const data = this.extractJobData();
-    await this.saveToServer(data);
+    if (!data) {
+      this.showNotification('❌ Could not extract job data.');
+      return;
+    }
+
+    await this.saveToServer(data, constants);
   }
 
-  // ⭐ UPDATED: Handle duplicate detection responses from server
-  async saveToServer(data) {
+  // Handle duplicate detection responses from server
+  async saveToServer(data, constants) {
     try {
       console.log('Sending job to server:', data);
       
@@ -517,14 +578,14 @@ class LinkedInJobExtractor {
           location: data.location,
           salary: data.salary,
           jobUrl: data.url,
-          status: data.applicationStatus || window.JobTrackerConstants.JOB_STATUS.APPLIED,
+          status: data.applicationStatus || constants.JOB_STATUS.APPLIED,
           dateApplied: data.applicationDate,
           notes: data.notes || '',
-          priority: data.priority || window.JobTrackerConstants.PRIORITY_LEVELS.NORMAL,
+          priority: data.priority || constants.PRIORITY_LEVELS.NORMAL,
           technicalDetails: data.keywords || [],
-          jobType: data.jobType,
-          experienceLevel: data.experienceLevel,
-          workArrangement: data.workArrangement,
+          jobType: data.jobType || constants.JOB_TYPES.NOT_SPECIFIED,
+          experienceLevel: data.experienceLevel || constants.EXPERIENCE_LEVELS.NOT_SPECIFIED,
+          workArrangement: data.workArrangement || constants.WORK_ARRANGEMENTS.NOT_SPECIFIED,
           contactPerson: '',
           followUpDate: null
         })
@@ -537,7 +598,7 @@ class LinkedInJobExtractor {
         
         // Different messages for update vs new save
         if (result.isUpdate) {
-          this.showNotification('🔄 Job updated in tracker!');
+          this.showNotification('📄 Job updated in tracker!');
         } else {
           this.showNotification('✅ Job saved to tracker!');
         }
@@ -608,18 +669,15 @@ class LinkedInJobExtractor {
   observeJobSelection() {
     let debounceTimer = null;
     let lastJobUrl = window.location.href;
-    let isProcessing = false; // Prevent overlapping updates
+    let isProcessing = false;
     
     const observer = new MutationObserver((mutations) => {
-      // Skip if already processing
       if (isProcessing) return;
       
-      // Only react to significant changes
       const hasSignificantChange = mutations.some(mutation => {
-        // Check if save button or job details container was added
         if (mutation.addedNodes.length > 0) {
           for (let node of mutation.addedNodes) {
-            if (node.nodeType === 1) { // Element node
+            if (node.nodeType === 1) {
               if (node.classList?.contains('jobs-save-button') ||
                   node.classList?.contains('jobs-search__job-details--container') ||
                   node.classList?.contains('job-details-jobs-unified-top-card__container') ||
@@ -635,17 +693,15 @@ class LinkedInJobExtractor {
       const currentUrl = window.location.href;
       const urlChanged = currentUrl !== lastJobUrl;
       
-      // Exit early if no relevant changes
       if (!hasSignificantChange && !urlChanged) {
         return;
       }
       
       if (urlChanged) {
         lastJobUrl = currentUrl;
-        console.log('🔄 URL changed:', currentUrl);
+        console.log('📄 URL changed:', currentUrl);
       }
       
-      // Clear any pending updates
       clearTimeout(debounceTimer);
       
       debounceTimer = setTimeout(() => {
@@ -654,51 +710,73 @@ class LinkedInJobExtractor {
         const saveButton = document.querySelector('.jobs-save-button');
         const existingButton = document.getElementById('job-tracker-extract-btn');
         
-        // Only add button if:
-        // 1. Save button exists
-        // 2. Our button doesn't exist yet
-        if (saveButton && !existingButton) {
+        if (saveButton && !existingButton && this.userId) {
           console.log('➕ Adding button to new job...');
           this.addExtractButton();
           this.extractJobData();
         } else if (existingButton && !saveButton) {
-          // Remove our button if save button is gone
           console.log('🗑️ Removing orphaned button...');
           existingButton.remove();
         }
         
         isProcessing = false;
-      }, 200); // Balanced debounce time
+      }, 200);
     });
 
-    // Start observing
     const targetNode = document.querySelector('.jobs-search__job-details--container') || document.body;
     
     observer.observe(targetNode, {
       childList: true,
       subtree: true,
-      attributes: false // Ignore attribute changes
+      attributes: false
     });
     
     console.log('✅ Observer initialized');
   }
 }
 
-// Initialize the extractor
-const jobExtractor = new LinkedInJobExtractor();
-window.jobExtractor = jobExtractor;
+// CRITICAL: Wait for constants before initializing - DO NOT PROCEED WITHOUT THEM
+const waitForConstants = async () => {
+  let attempts = 0;
+  const maxAttempts = 100; // 10 seconds max
+  
+  while (!window.JobTrackerConstants && attempts < maxAttempts) {
+    await new Promise(r => setTimeout(r, 100));
+    attempts++;
+  }
+  
+  if (!window.JobTrackerConstants) {
+    const errorMsg = '❌ CRITICAL: Constants failed to load. This is a manifest/loading order issue.';
+    console.error(errorMsg);
+    throw new Error(errorMsg);
+  }
+  
+  console.log('✅ Constants loaded successfully');
+  return window.JobTrackerConstants;
+};
+
+// Initialize the extractor after constants are ready
+(async () => {
+  try {
+    await waitForConstants();
+    const jobExtractor = new LinkedInJobExtractor();
+    window.jobExtractor = jobExtractor;
+  } catch (error) {
+    console.error('Failed to initialize Job Extractor:', error);
+  }
+})();
 
 // Listen for messages from popup
 chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
   console.log('Message received:', request);
   
   if (request.action === 'getCurrentJob') {
-    const jobData = jobExtractor.extractJobData();
+    const jobData = window.jobExtractor ? window.jobExtractor.extractJobData() : null;
     sendResponse({jobData: jobData});
   } else if (request.action === 'logDebugData') {
     console.log('%c=== JOB TRACKER DEBUG ===', 'color: blue; font-size: 16px; font-weight: bold;');
-    console.log('User ID:', jobExtractor.userId);
-    console.log('Current Job Data:', jobExtractor.extractJobData());
+    console.log('User ID:', window.jobExtractor?.userId);
+    console.log('Current Job Data:', window.jobExtractor?.extractJobData());
     
     chrome.storage.local.get(['savedJobs', 'userId'], (result) => {
       console.log('Storage User ID:', result.userId);
