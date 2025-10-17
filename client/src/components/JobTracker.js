@@ -73,11 +73,10 @@ const JobTracker = () => {
     setError('');
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/stats`, {
+      const response = await fetch(`${API_BASE_URL}/stats`, {
         method: 'GET',
         headers: { 'x-user-id': userId.trim() },
       });
-
       if (response.ok) {
         localStorage.setItem('jt_userId', userId.trim());
         setLoggedIn(true);

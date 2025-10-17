@@ -4,7 +4,7 @@ const LoginScreen = ({ userId, setUserId, onLogin, loading, error }) => {
   return (
     <div style={styles.container}>
       <div style={styles.box}>
-        <h1 style={styles.title}>👋 Welcome back</h1>
+        <h1 style={styles.title}>👋 Hello !</h1>
         <p style={styles.subtitle}>Enter your User ID to access your saved applications.</p>
         
         <div style={styles.form}>
