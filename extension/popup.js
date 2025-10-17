@@ -288,7 +288,7 @@ function setupEventListeners(userId) {
     const dashboardBtn = document.getElementById('openDashboard');
     if (dashboardBtn) {
         dashboardBtn.addEventListener('click', function() {
-            const dashboardUrl = `${window.JobTrackerConstants.DASHBOARD_URL}?userId=${userId}`;
+            const dashboardUrl = `${'https://job-tracker-gamma-three.vercel.app'}?userId=${userId}`;
             chrome.tabs.create({ url: dashboardUrl });
             window.close();
         });
@@ -479,7 +479,7 @@ function renderRecentJobs(totalCount, jobs, userId) {
     const viewAllBtn = document.getElementById('viewAllBtn');
     if (viewAllBtn) {
         viewAllBtn.addEventListener('click', function() {
-            const dashboardUrl = `${window.JobTrackerConstants.DASHBOARD_URL}?userId=${userId}`;
+            const dashboardUrl = `${'https://job-tracker-gamma-three.vercel.app'}?userId=${userId}`;
             chrome.tabs.create({ url: dashboardUrl });
             window.close();
         });

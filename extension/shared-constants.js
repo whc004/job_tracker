@@ -243,7 +243,7 @@ const TIMEZONE_OPTIONS = [
 // ==================== DASHBOARD / API ====================
 const DASHBOARD_URL = 'https://job-tracker-gamma-three.vercel.app';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL;
+const API_BASE_URL = 'https://jobtracker-production-2ed3.up.railway.app/api/applications';
 
 const API_ENDPOINTS = {
   JOBS: '/api/jobs',

@@ -39,8 +39,7 @@ app.use(cors());
 app.use(express.json());
 
 function validateUserId(req, res, next) {
-  const userId = req.body.userId || req.query.userId || 
-                 req.headers['x-user-id'] || req.body._extractedData?.userId;
+  const userId = req.body.userId || req.query.userId || req.headers['x-user-id'] || req.body._extractedData?.userId;
   
   if (!userId) {
     return res.status(401).json({ 

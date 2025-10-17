@@ -570,7 +570,7 @@ class LinkedInJobExtractor {
     try {
       debugLog('Sending job to server:', data);
       
-      const response = await fetch('https://jobtracker-production-2ed3.up.railway.app/api/applications', {
+      const response = await fetch(constants.API_BASE_URL, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

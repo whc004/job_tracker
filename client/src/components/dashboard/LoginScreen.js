@@ -13,7 +13,7 @@ const LoginScreen = ({ userId, setUserId, onLogin, loading, error }) => {
             type="text"
             value={userId}
             onChange={(e) => setUserId(e.target.value)}
-            onKeyPress={(e) => e.key === 'Enter' && onLogin()}
+            onKeyPress={(e) => e.key === 'Enter' && !loading && onLogin()}
             placeholder="Enter your User ID"
             style={styles.input}
           />

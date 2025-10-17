@@ -22,6 +22,8 @@ const debugError = (...args) => { if (ENABLE_LOGGING) console.error(...args); };
 const JobTracker = () => {
   const [userId, setUserId] = useState(localStorage.getItem('jt_userId') || '');
   const [loggedIn, setLoggedIn] = useState(Boolean(userId));
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('dashboard');
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [csvOpen, setCsvOpen] = useState(false);
@@ -61,10 +63,34 @@ const JobTracker = () => {
     }
   }, [loggedIn, userId, noResponseDays, fetchData]);
 
-  const onLogin = () => {
-    if (!userId.trim()) return;
-    localStorage.setItem('jt_userId', userId.trim());
-    setLoggedIn(true);
+  const onLogin = async () => {
+    if (!userId.trim()) {
+      setError('Please enter your User ID.');
+      return;
+    }
+
+    setLoading(true);
+    setError('');
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/stats`, {
+        method: 'GET',
+        headers: { 'x-user-id': userId.trim() },
+      });
+
+      if (response.ok) {
+        localStorage.setItem('jt_userId', userId.trim());
+        setLoggedIn(true);
+      } 
+      else {
+        setError('❌ Invalid User ID. Please try again.');
+        setLoggedIn(false);
+      }
+    } catch (err) {
+      setError('Network error. Please try again later.');
+    } finally {
+      setLoading(false);
+    }
   };
   
   const onLogout = () => {
@@ -220,7 +246,7 @@ const JobTracker = () => {
 
   if (!loggedIn) {
     return (
-      <LoginScreen userId={userId} setUserId={setUserId} onLogin={onLogin} loading={false} />
+      <LoginScreen userId={userId} setUserId={setUserId} onLogin={onLogin} loading={loading} error={error} />
     );
   }
 
