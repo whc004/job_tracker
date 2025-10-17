@@ -327,7 +327,7 @@ const JobTracker = () => {
             setCollectionFilter={setCollectionFilter}
             onRefresh={() => fetchData(userId, noResponseDays)}
             onExportCSV={() => exportToCSV(filtered)}
-            onOpenCSVUpload={() => setCsvOpen(true)}
+            //onOpenCSVUpload={() => setCsvOpen(true)}
             isSelectMode={isSelectMode}
             setIsSelectMode={setIsSelectMode}
             selectedJobs={selectedJobs}
