@@ -1,7 +1,7 @@
 // client/src/components/JobCard.js
 import React from 'react';
-import { parseSkills, isCollectionJob, statusColors } from '../helpers/default';
-import { formatDateInTimezone, getTimezoneAbbr } from '../helpers/default';
+import { STATUS_COLORS } from '../../shared-constants';
+import { parseSkills, isCollectionJob, formatDateInTimezone, getTimezoneAbbr } from '../helpers/default';
 
 const JobCard = ({ job,userTimezone, onClick, onToggleStar, isSelected, onToggleSelect, selectMode }) => {
   const isStarred = isCollectionJob(job);
@@ -54,8 +54,8 @@ const JobCard = ({ job,userTimezone, onClick, onToggleStar, isSelected, onToggle
           <span 
             style={{
               ...styles.badge, 
-              backgroundColor: statusColors[job.status] + '20',
-              color: statusColors[job.status]
+              backgroundColor: STATUS_COLORS[job.status] + '20',
+              color: STATUS_COLORS[job.status]
             }}
           >
             {job.status}

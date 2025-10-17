@@ -2,7 +2,6 @@ const DEBUG_LOGGING = false;
 const debugLog = (...args) => { if (DEBUG_LOGGING) console.log(...args); };
 const debugError = (...args) => { if (DEBUG_LOGGING) console.error(...args); };
 const debugWarn = (...args) => { if (DEBUG_LOGGING) console.warn(...args); };
-const ENABLE_SERVER_SYNC = false;
 
 
 // LinkedIn Job Extractor - Complete Fixed Version
@@ -571,7 +570,7 @@ class LinkedInJobExtractor {
     try {
       debugLog('Sending job to server:', data);
       
-      const response = await fetch(constants.API_BASE_URL, {
+      const response = await fetch('https://jobtracker-production-2ed3.up.railway.app/api/applications', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

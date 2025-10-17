@@ -24,9 +24,7 @@ dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
-const PUBLIC_URL = process.env.RAILWAY_STATIC_URL || 
-                    process.env.RAILWAY_PUBLIC_DOMAIN || 
-                    `http://localhost:${PORT}`;
+const PUBLIC_URL = process.env.RAILWAY_STATIC_URL || process.env.RAILWAY_PUBLIC_DOMAIN || `http://localhost:${PORT}`;
 
 const VALID_USER_IDS = new Set([
   'job-tracker_vincent',

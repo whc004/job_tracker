@@ -2,9 +2,6 @@ const DEBUG_LOGGING = false;
 const debugLog = (...args) => { if (DEBUG_LOGGING) console.log(...args); };
 const debugError = (...args) => { if (DEBUG_LOGGING) console.error(...args); };
 const debugWarn = (...args) => { if (DEBUG_LOGGING) console.warn(...args); };
-const ENABLE_SERVER_SYNC = false;
-
-const API_URL = 'https://jobtracker-production-2ed3.up.railway.app/api';
 
 // ========================================
 // INITIALIZATION
@@ -40,8 +37,8 @@ function showSetupScreen() {
                 <strong>Welcome to Job Tracker!</strong><br><br>
                 To use this extension, you need a User ID from the developer.<br><br>
                 <strong>How to get your User ID:</strong><br>
-                1. Email: vincent0109ccc@gmail.com<br>
-                2. Request access to Job Tracker and send the user-id<br>
+                1. Send an email to vincent0109ccc@gmail.com<br>
+                2. Request access to Job Tracker and send the user-id you want<br>
                 3. I'll add you in the user list
             </div>
             
@@ -105,7 +102,7 @@ async function handleUserIdSubmission() {
     try {
         debugLog('🔍 Verifying User ID with server:', inputValue);
         
-        const response = await fetch(`${API_URL}/stats`, {
+        const response = await fetch(`${'https://jobtracker-production-2ed3.up.railway.app/api'}/stats`, {
             method: 'GET',
             headers: {
                 'x-user-id': inputValue,
@@ -321,7 +318,7 @@ async function fetchJobStats(userId, retryCount = 0) {
     try {
         debugLog(`📊 Fetching stats (attempt ${retryCount + 1})...`);
         
-        const response = await fetch(`${API_URL}/stats`, {
+        const response = await fetch(`${'https://jobtracker-production-2ed3.up.railway.app/api'}/stats`, {
             method: 'GET',
             headers: {
                 'x-user-id': userId,
@@ -370,7 +367,7 @@ async function fetchRecentJobs(userId, limit = 3, retryCount = 0) {
         debugLog(`📥 Fetching recent jobs (attempt ${retryCount + 1})...`);
         
         const response = await fetch(
-            `${API_URL}/applications?userId=${userId}`,
+            `${'https://jobtracker-production-2ed3.up.railway.app/api'}/applications?userId=${userId}`,
             {
                 method: 'GET',
                 headers: {

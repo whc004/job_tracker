@@ -11,9 +11,13 @@ import Analytics from './Analytics/Analytics';
 import FilterControls from './dashboard/FilterControls';
 import { isCollectionJob } from './helpers/default';
 import { useJobData } from './hooks/JobData';
-import { API_URL } from './helpers/default';
 import { exportToCSV } from './helpers/csvExport';
-import { INTERVIEW_STATUSES,JOB_STATUS } from '../shared-constants';
+import { INTERVIEW_STATUSES,JOB_STATUS, API_BASE_URL } from '../shared-constants';
+
+
+const ENABLE_LOGGING = false;
+//const debugLog = (...args) => { if (ENABLE_LOGGING) console.log(...args); };
+const debugError = (...args) => { if (ENABLE_LOGGING) console.error(...args); };
 
 const JobTracker = () => {
   const [userId, setUserId] = useState(localStorage.getItem('jt_userId') || '');
@@ -202,14 +206,14 @@ const JobTracker = () => {
     }));
 
     try {
-      await fetch(`${API_URL}/jobs/bulk-insert`, {
+      await fetch(`${API_BASE_URL}/jobs/bulk-insert`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-user-id': userId },
         body: JSON.stringify({ userId, jobs: jobsPayload }),
       });
       fetchData(userId, noResponseDays);
     } catch (e) {
-      console.error(e);
+      debugError(e);
       alert('Upload failed. Please try again.');
     }
   };
@@ -340,6 +344,7 @@ const JobTracker = () => {
       <JobDetailModal
         open={Boolean(detailJob)}
         job={detailJob}
+        userTimezone={userTimezone} 
         onClose={() => setDetailJob(null)}
         onDelete={async (job) => {
           if (!window.confirm('Delete this job?')) return;

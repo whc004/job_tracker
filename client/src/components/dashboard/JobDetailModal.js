@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { STATUS_OPTIONS, PRIORITY_OPTIONS, JOB_STATUS } from '../../shared-constants'; 
-import { statusColors, formatDateUTC } from '../helpers/default';
+import { WORK_ARRANGEMENT_OPTIONS , STATUS_OPTIONS, PRIORITY_OPTIONS, JOB_STATUS , STATUS_COLORS } from '../../shared-constants'; 
+import { YMD , formatDateInTimezone } from '../helpers/default';
 
-const JobDetailModal = ({ open, job, onClose, onSave, onDelete }) => {
+const JobDetailModal = ({ open, job, userTimezone , onClose, onSave, onDelete }) => {
   const [form, setForm] = useState(null);
 
   useEffect(() => {
@@ -15,7 +15,7 @@ const JobDetailModal = ({ open, job, onClose, onSave, onDelete }) => {
         status: job.status || 'Applied',
         workArrangement: job.workArrangement || '',
         priority: job.priority || 'Normal',
-        dateApplied: job.dateApplied ? new Date(job.dateApplied).toISOString().slice(0, 10) : '',
+        dateApplied: job.dateApplied ? new Date(job.dateApplied).toISOString() : '',
         jobUrl: job.jobUrl || '',
         contactPerson: job.contactPerson || '',
         notes: job.notes || '',
@@ -99,15 +99,8 @@ const JobDetailModal = ({ open, job, onClose, onSave, onDelete }) => {
 
           <Field label="Work Arrangement">
             <select style={styles.input} value={form.workArrangement} onChange={e => set('workArrangement', e.target.value)}>
-              <option>Remote</option>
-              <option>Hybrid</option>
-              <option>On-site</option>
-              <option>Unspecified</option>
+              {WORK_ARRANGEMENT_OPTIONS.map(priority => (<option key={priority} value={priority}>{priority}</option>))}
             </select>
-          </Field>
-
-          <Field label="Date Applied">
-            <input type="date" style={styles.input} value={form.dateApplied} onChange={e => set('dateApplied', e.target.value)} />
           </Field>
 
           <Field label="Job URL">
@@ -171,12 +164,12 @@ const JobDetailModal = ({ open, job, onClose, onSave, onDelete }) => {
           <button
             style={{
               ...styles.statusChip,
-              background: statusColors[form.status] + '20',
-              color: statusColors[form.status]
+              background: STATUS_COLORS[form.status] + '20',
+              color: STATUS_COLORS[form.status]
             }}
             disabled
           >
-            {form.status}{job.dateApplied && ` • Applied ${formatDateUTC(form.dateApplied)}`}
+            {form.status}{job.dateApplied && ` • Applied ${YMD(formatDateInTimezone(form.dateApplied,userTimezone))}`}
           </button>
           
           <button

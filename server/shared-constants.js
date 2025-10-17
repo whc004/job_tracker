@@ -243,10 +243,7 @@ const TIMEZONE_OPTIONS = [
 // ==================== DASHBOARD / API ====================
 const DASHBOARD_URL = 'https://your-dashboard.railway.app';
 
-const API_BASE_URL =
-  (typeof process !== 'undefined' && process.env && process.env.REACT_APP_API_URL)
-    ? process.env.REACT_APP_API_URL
-    : 'https://jobtracker-production-2ed3.up.railway.app/api/applications';
+const API_BASE_URL = process.env.REACT_APP_API_URL;
 
 const API_ENDPOINTS = {
   JOBS: '/api/jobs',

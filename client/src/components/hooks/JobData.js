@@ -1,6 +1,13 @@
 import { useState, useCallback } from 'react';
-import { API_URL } from '../helpers/default';
-import { PRIORITY_LEVELS } from '../../shared-constants';
+import { PRIORITY_LEVELS , API_BASE_URL } from '../../shared-constants';
+
+
+const ENABLE_LOGGING = false;
+const debugLog = (...args) => { if (ENABLE_LOGGING) console.log(...args); };
+const debugError = (...args) => { if (ENABLE_LOGGING) console.error(...args); };
+
+
+debugLog(" API : " + API_BASE_URL);
 
 export const useJobData = () => {
   const [jobs, setJobs] = useState([]);
@@ -15,14 +22,14 @@ export const useJobData = () => {
         const daysSinceApplied = Math.floor((now - appliedDate) / (1000 * 60 * 60 * 24));
         if (daysSinceApplied >= daysThreshold) {
           try {
-            await fetch(`${API_URL}/applications/${job._id}`, {
+            await fetch(`${API_BASE_URL}/applications/${job._id}`, {
               method: 'PUT',
               headers: { 'Content-Type': 'application/json', 'x-user-id': userId },
               body: JSON.stringify({ status: 'No Response' })
             });
             updatedJobs.push({ ...job, status: 'No Response' });
           } catch (err) {
-            console.error('Error auto-updating job:', err);
+            debugError('Error auto-updating job:', err);
             updatedJobs.push(job);
           }
         } else {
@@ -38,7 +45,7 @@ export const useJobData = () => {
   const fetchData = useCallback(async (userId, noResponseDays) => {
     setLoading(true);
     try {
-      const jobsRes = await fetch(`${API_URL}/applications`, { 
+      const jobsRes = await fetch(`${API_BASE_URL}/applications`, { 
         headers: { 'x-user-id': userId } });
       const jobsData = await jobsRes.json();
     
@@ -47,7 +54,7 @@ export const useJobData = () => {
         setJobs(updatedJobs);
       }
     } catch (err) {
-      console.error('Error fetching data:', err);
+      debugError('Error fetching data:', err);
     } finally {
       setLoading(false);
     }
@@ -55,14 +62,14 @@ export const useJobData = () => {
 
   const updateJobStatus = async (userId, jobId, newStatus) => {
     try {
-      const response = await fetch(`${API_URL}/applications/${jobId}`, {
+      const response = await fetch(`${API_BASE_URL}/applications/${jobId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', 'x-user-id': userId },
         body: JSON.stringify({ status: newStatus })
       });
       return response.ok ? await response.json() : null;
     } catch (err) {
-      console.error('Error updating job:', err);
+      debugError('Error updating job:', err);
       return null;
     }
   };
@@ -70,7 +77,7 @@ export const useJobData = () => {
   const toggleStar = async (userId, job) => {
     const newPriority = job.priority === PRIORITY_LEVELS.STAR ? PRIORITY_LEVELS.NORMAL : PRIORITY_LEVELS.STAR;
     try {
-      const response = await fetch(`${API_URL}/applications/${job._id}`, {
+      const response = await fetch(`${API_BASE_URL}/applications/${job._id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', 'x-user-id': userId },
         body: JSON.stringify({ priority: newPriority })
@@ -80,34 +87,34 @@ export const useJobData = () => {
         return newPriority;
       }
     } catch (err) {
-      console.error('Error toggling star:', err);
+      debugError('Error toggling star:', err);
     }
     return null;
   };
 
   const deleteJob = async (userId, jobId) => {
     try {
-      const response = await fetch(`${API_URL}/applications/${jobId}`, {
+      const response = await fetch(`${API_BASE_URL}/applications/${jobId}`, {
         method: 'DELETE',
         headers: { 'x-user-id': userId }
       });
       return response.ok;
     } catch (err) {
-      console.error('Error deleting job:', err);
+      debugError('Error deleting job:', err);
       return false;
     }
   };
 
   const saveJobDetails = async (userId, jobId, updates) => {
     try {
-      const response = await fetch(`${API_URL}/applications/${jobId}`, {
+      const response = await fetch(`${API_BASE_URL}/applications/${jobId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', 'x-user-id': userId },
         body: JSON.stringify(updates)
       });
       return response.ok ? await response.json() : null;
     } catch (err) {
-      console.error('Error updating job:', err);
+      debugError('Error updating job:', err);
       return null;
     }
   };
@@ -116,7 +123,7 @@ export const useJobData = () => {
     try {
       await Promise.all(
         Array.from(jobIds).map(jobId =>
-          fetch(`${API_URL}/applications/${jobId}`, {
+          fetch(`${API_BASE_URL}/applications/${jobId}`, {
             method: 'DELETE',
             headers: { 'x-user-id': userId }
           })
@@ -124,7 +131,7 @@ export const useJobData = () => {
       );
       return true;
     } catch (err) {
-      console.error('Bulk delete error:', err);
+      debugError('Bulk delete error:', err);
       return false;
     }
   };

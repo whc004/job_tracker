@@ -1,6 +1,12 @@
 import React, { useState } from 'react';
 import Papa from 'papaparse';
 
+
+const ENABLE_LOGGING = false;
+//const debugLog = (...args) => { if (ENABLE_LOGGING) console.log(...args); };
+const debugError = (...args) => { if (ENABLE_LOGGING) console.error(...args); };
+
+
 const CSVUploadModal = ({ open, onClose, onUpload }) => {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
@@ -18,14 +24,14 @@ const CSVUploadModal = ({ open, onClose, onUpload }) => {
           onUpload(results.data); // send raw rows to parent to normalize + POST
           onClose();
         } catch (e) {
-          console.error(e);
+          debugError(e);
           setErr('Upload failed. Check file format.');
         } finally {
           setBusy(false);
         }
       },
       error: (e) => {
-        console.error(e);
+        debugError(e);
         setErr('Could not parse CSV.');
         setBusy(false);
       }
