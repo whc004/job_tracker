@@ -241,7 +241,7 @@ const TIMEZONE_OPTIONS = [
 ];
 
 // ==================== DASHBOARD / API ====================
-const DASHBOARD_URL = 'https://your-dashboard.railway.app';
+const DASHBOARD_URL = 'https://job-tracker-gamma-three.vercel.app';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL;
 
