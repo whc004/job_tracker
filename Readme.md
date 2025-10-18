@@ -80,7 +80,7 @@ Job Tracker eliminates the pain of manually tracking job applications across mul
 5. Select the `extension` folder from the cloned repository
 6. The Job Tracker icon will appear in your Chrome toolbar
 
-**[SCREENSHOT: "Chrome extension icon in toolbar"]**
+![Chrome extension icon in toolbar](images/01-extension-toolbar.png)
 
 #### Step 2: Get Your User ID
 1. Send an email to **vincent0109ccc@gmail.com**
@@ -88,14 +88,14 @@ Job Tracker eliminates the pain of manually tracking job applications across mul
 3. Receive confirmation with your approved User ID
 4. In the extension popup, paste your User ID in the settings
 
-**[SCREENSHOT: "Extension popup with User ID input field"]**
+![Extension popup with User ID input field](images/02-extension-settings.png)
 
 #### Step 3: Start Tracking
 1. Visit any LinkedIn job listing
 2. Click the Job Tracker extension icon
 3. Review auto-filled details
 4. Click "Save"
-5. Visit the [dashboard](https://job-tracker-gamma-three.vercel.app) to see your saved application
+5. Visit the [dashboard](https://job-tracker-dashboard.vercel.app) to see your saved application
 
 **[SCREENSHOT: "LinkedIn job page with extension popup showing auto-filled data"]**
 **[SCREENSHOT: "Dashboard showing saved applications"]**
@@ -116,11 +116,11 @@ Job Tracker eliminates the pain of manually tracking job applications across mul
 4. Review the details
 5. Click "Save" - Done!
 
-**[SCREENSHOT: "Extension popup with all extracted fields"]**
+![Extension popup with all extracted fields](images/04-extension-popup-fields.png)
 
 ### Managing Your Applications on Dashboard
 
-1. Visit [Job Tracker Dashboard](https://job-tracker-gamma-three.vercel.app)
+1. Visit [Job Tracker Dashboard](https://job-tracker-dashboard.vercel.app)
 2. Enter your User ID
 3. View all your saved job applications in a clean table/grid format
 4. Click on any application to:
@@ -144,7 +144,7 @@ After saving an application in the extension:
 2. Refresh the page (F5 or Cmd+R)
 3. Your new application appears instantly
 
-**[SCREENSHOT: "Dashboard after refresh showing new application"]**
+![Dashboard after refresh showing new application](images/07-dashboard-new-app-saved.png)
 
 ## 🌍 Live Demo
 
@@ -276,30 +276,57 @@ Job Tracker is built for speed:
 
 ```
 job_tracker/
+├── client/                    # React Dashboard (Frontend)
+│   ├── public/
+│   │   ├── index.html
+│   │   ├── jobtracker.ico
+│   │   └── logo*.png
+│   ├── src/
+│   │   ├── components/
+│   │   ├── App.js
+│   │   ├── App.css
+│   │   ├── index.js
+│   │   ├── index.css
+│   │   ├── logo.svg
+│   │   └── shared-constants.js
+│   ├── package.json
+│   └── .env
+│
 ├── extension/                 # Chrome Extension
+│   ├── icons/
+│   │   └── job-tracker-icon.png
 │   ├── manifest.json         # Extension configuration
 │   ├── popup.html            # Extension popup UI
 │   ├── popup.js              # Popup logic
-│   ├── content.js            # LinkedIn page data extraction
-│   └── icons/                # Extension icons
+│   ├── content.js            # LinkedIn data extraction
+│   ├── styles.css            # Extension styles
+│   ├── shared-constants.js
+│   └── images/
 │
-├── backend/                  # Express API Server
-│   ├── server.js             # Main server file
-│   ├── routes/               # API endpoints
-│   ├── models/               # MongoDB schemas
-│   ├── controllers/          # Business logic
+├── server/                    # Express API Backend
+│   ├── src/
+│   │   └── index.js          # Main server file
 │   ├── package.json
-│   └── .env.example
+│   ├── .env
+│   ├── nixpacks.toml         # Railway deployment config
+│   └── shared-constants.js
 │
-└── frontend/                 # React Dashboard
-    ├── src/
-    │   ├── components/       # React components
-    │   ├── pages/            # Page components
-    │   ├── App.js
-    │   └── index.js
-    ├── package.json
-    └── .env.example
+├── shared-constants.js        # Root-level shared constants
+├── .gitignore
+├── LICENSE
+├── README.md
+├── images/                    # README screenshots
+│   ├── 01-extension-toolbar.png
+│   ├── 02-extension-settings.png
+│   ├── 03-linkedin-job-page.png
+│   ├── 04-extension-popup-fields.png
+│   ├── 05-dashboard-table.png
+│   ├── 06-dashboard-edit-modal.png
+│   └── 07-dashboard-new-app-saved.png
+└── ...
 ```
+
+**Note**: Each part (client, server, extension) has its own `package.json` and can be developed/deployed independently.
 
 ## 📝 How It Works Under the Hood
 
@@ -332,6 +359,14 @@ Have questions or issues?
 
 - **Email**: vincent0109ccc@gmail.com
 - **GitHub Issues**: [Open an issue](https://github.com/whc004/job_tracker/issues)
+
+## 🎯 Roadmap
+
+- [ ] Support for more job boards (Indeed, Glassdoor, etc.)
+- [ ] Email reminders for follow-ups
+- [ ] Salary data analytics
+- [ ] Application templates for quick responses
+- [ ] Interview prep integration
 
 ---
 
