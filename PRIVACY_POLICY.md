@@ -27,6 +27,6 @@ Your data is used ONLY to:
 - **Storage**: To save your User ID locally on your device
 
 ## Contact
-Email: whc004app@gmail.com
+Email: vincent0109ccc@gmail.com
 
 For more information, visit: https://github.com/whc004/job_tracker
