@@ -99,10 +99,8 @@ Or see the [Developer Guide](#developer-guide) to set up locally.
 1. Go to **LinkedIn** (linkedin.com)
 2. Search for jobs or browse job listings
 3. Click on any job listing that interests you
-4. Click the **Job Tracker extension icon** in your toolbar
-5. Review the auto-filled job details (company, position, salary, location, skills)
-6. Click **"Save"** button
-7. You'll see a confirmation notification
+4. Click **"Mark as Applied"** button
+5. You'll see a confirmation notification
 
 <img src="images/03-linkedin-job-page.png" width="400">
 
