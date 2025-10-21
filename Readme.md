@@ -63,7 +63,7 @@ Or see the [Developer Guide](#developer-guide) to set up locally.
 
 # USER GUIDE
 
-For non-technical users who want to track their job applications.
+# For Non-Technical Users: Track Your Job Applications
 
 ## Getting Started (Easy Setup)
 
@@ -73,13 +73,13 @@ For non-technical users who want to track their job applications.
 3. Confirm the permissions
 4. The Job Tracker icon will appear in your toolbar
 
-![Chrome extension icon in toolbar](images/01-extension-toolbar.png | width=400)
+![Chrome extension icon in toolbar](images/01-extension-toolbar.png)
 
 ### Step 2: Get Your User ID
 1. Send an email to **vincent0109ccc@gmail.com**
-2. Subject: "Job Tracker Access Request"
-3. Message: "I want to use Job Tracker. My preferred User ID is: [your_choice]"
-4. Example: `john_jobs`, `job_tracker_2025`, etc.
+2. **Subject:** "Job Tracker Access Request"
+3. **Message:** "I want to use Job Tracker. My preferred User ID is: [your_choice]"
+4. **Examples:** `john_jobs`, `job_tracker_2025`, `sarah_applications`
 5. Receive your User ID confirmation via email
 
 ### Step 3: Set Up the Extension
@@ -90,45 +90,67 @@ For non-technical users who want to track their job applications.
 
 <img src="images/02-extension-settings.png" width="400">
 
+---
+
 ## How to Use
 
 ### Saving a Job Application
 
-1. Go to any LinkedIn job listing
-2. Search for any jobs you want to apply
-2. Click the Job Tracker extension icon
-4. Click "Mark as Applied"
-5. See confirmation notification
-6. 
+1. Go to **LinkedIn** (linkedin.com)
+2. Search for jobs or browse job listings
+3. Click on any job listing that interests you
+4. Click the **Job Tracker extension icon** in your toolbar
+5. Review the auto-filled job details (company, position, salary, location, skills)
+6. Click **"Save"** button
+7. You'll see a confirmation notification
+
 <img src="images/03-linkedin-job-page.png" width="400">
 
 ### View Your Applications
 
 1. Visit **[Job Tracker Dashboard](https://job-tracker-gamma-three.vercel.app)**
 2. Enter your User ID
-3. Click "Access Dashboard"
-4. See all your saved applications
+3. Click **"Access Dashboard"**
+4. See all your saved job applications in one place
 
-![Dashboard showing saved applications](images/05-dashboard-table.png | width=400)
+<img src="images/05-dashboard-table.png" width="400">
 
 ### Manage Your Applications
 
-1. Click on any job application
-2. Update the status (Applied, Interview Round 1-5, Offer, Rejected, etc.)
-3. Add notes about the company or interview
-4. Set priority (Star, Normal)
-5. Click "Save" when done
+1. Click on any job application in the dashboard
+2. Update the application status:
+   - Applied
+   - Interview - Round 1
+   - Interview - Round 2
+   - Interview - Round 3
+   - Interview - Round 4
+   - Interview - Round 5+
+   - Offer
+   - Rejected
+   - No Response
+3. Add notes about the company, interview time, or contact person
+4. Set priority: Star or Normal
+5. Set a follow-up date to remind yourself
+6. Click **"Save"** when done
 
-![Application detail modal/edit page](images/06-dashboard-edit-modal.png | width=400)
+<img src="images/06-dashboard-edit-modal.png" width="400">
 
-### Track Your Progress
+### Track Your Progress in Real-Time
 
-After saving a job in the extension:
-1. Go to the dashboard
-2. Refresh using the "Refresh" bottom
-3. Your new application appears instantly
+1. After saving a job in the extension, go to the dashboard
+2. Refresh the page (press F5 on keyboard or Cmd+R on Mac)
+3. Your new application appears instantly on the dashboard
 
-![Dashboard after refresh showing new application](images/07-dashboard-new-app-saved.png | width=400)
+<img src="images/07-dashboard-new-app-saved.png" width="400">
+
+---
+
+## Tips for Best Results
+
+- **Save often** - The more jobs you track, the better you can see patterns
+- **Update status regularly** - Keep your progress up-to-date for accurate tracking
+- **Use notes** - Write down important details about each company
+- **Set reminders** - Use follow-up dates to remember when to reach out
 
 ## Troubleshooting
 
