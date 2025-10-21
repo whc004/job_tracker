@@ -86,9 +86,10 @@ Or see the [Developer Guide](#developer-guide) to set up locally.
 1. Click the Job Tracker icon in your toolbar
 2. Paste your User ID in the input field
 3. Click "Set User ID"
-4. You're ready to start!
-
 <img src="images/02-extension-settings.png" width="400">
+
+4. You're ready to start!
+<img src="images/03-linkedin-job-page.png" width="400">
 
 ---
 
@@ -102,16 +103,18 @@ Or see the [Developer Guide](#developer-guide) to set up locally.
 4. Click **"Mark as Applied"** button
 5. You'll see a confirmation notification
 
-<img src="images/03-linkedin-job-page.png" width="400">
+<img src="images/04-extension-popup-fields.png" width="400">
+
 
 ### View Your Applications
 
 1. Visit **[Job Tracker Dashboard](https://job-tracker-gamma-three.vercel.app)**
 2. Enter your User ID
 3. Click **"Access Dashboard"**
+<img src="images/09-dashboard-log-in-page.png" width="600">
+
 4. See all your saved job applications in one place
-<img src="images/09-dashboard-log-in-page.png">
-<img src="images/05-dashboard-table.png">
+<img src="images/05-dashboard-table.png" width="600">
 
 ### Manage Your Applications
 
@@ -128,18 +131,18 @@ Or see the [Developer Guide](#developer-guide) to set up locally.
    - No Response
 3. Add notes about the company, interview time, or contact person
 4. Set priority: Star or Normal
-5. Set a follow-up date to remind yourself
-6. Click **"Save"** when done
+5. Click **"Save"** when done
 
-<img src="images/06-dashboard-edit-modal.png">
+<img src="images/06-dashboard-edit-modal.png" width="600">
 
 ### Track Your Progress in Real-Time
 
 1. After saving a job in the extension, go to the dashboard
-2. Refresh the page (press F5 on keyboard or Cmd+R on Mac)
+2. Refresh the page using refresh bottom
 3. Your new application appears instantly on the dashboard
 
-<img src="images/07-dashboard-new-app-saved.png">
+<img src="images/08-chrome-extensions-page.png" width="600">
+<img src="images/07-dashboard-new-app-saved.png" width="600">
 
 ---
 
