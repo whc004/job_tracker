@@ -8,6 +8,16 @@ Job Tracker eliminates the pain of manually tracking job applications across mul
 
 > **Why the User ID system?** We use a lightweight user ID approach instead of complex authentication to keep our MongoDB storage minimal and free-tier friendly. This keeps the service sustainable without database bloat.
 
+---
+
+## 🚀 Install Now
+
+**[Get Job Tracker on Chrome Web Store](https://chromewebstore.google.com/detail/oelhgkiopbnchopjgpilhdnpnkbponkf)**
+
+Or follow the steps below to set up locally for development.
+
+---
+
 ## ✨ Features
 
 ### Chrome Extension
@@ -61,7 +71,7 @@ Job Tracker eliminates the pain of manually tracking job applications across mul
 - **Database**: MongoDB (free tier)
 - **Deployment**: Railway (Backend) + Vercel (Frontend)
 
-## 🚀 Getting Started
+## 🚀 Getting Started (Local Development)
 
 ### Prerequisites
 - Chrome Browser (v90+)
@@ -95,10 +105,10 @@ Job Tracker eliminates the pain of manually tracking job applications across mul
 2. Click the Job Tracker extension icon
 3. Review auto-filled details
 4. Click "Save"
-5. Visit the [dashboard](https://job-tracker-dashboard.vercel.app) to see your saved application
+5. Visit the [dashboard](https://job-tracker-gamma-three.vercel.app) to see your saved application
 
-**[SCREENSHOT: "LinkedIn job page with extension popup showing auto-filled data"]**
-**[SCREENSHOT: "Dashboard showing saved applications"]**
+![LinkedIn job page with extension popup showing auto-filled data](images/03-linkedin-job-page.png)
+![Dashboard showing saved applications](images/05-dashboard-table.png)
 
 ## 📖 Usage Guide
 
@@ -120,7 +130,7 @@ Job Tracker eliminates the pain of manually tracking job applications across mul
 
 ### Managing Your Applications on Dashboard
 
-1. Visit [Job Tracker Dashboard](https://job-tracker-dashboard.vercel.app)
+1. Visit [Job Tracker Dashboard](https://job-tracker-gamma-three.vercel.app)
 2. Enter your User ID
 3. View all your saved job applications in a clean table/grid format
 4. Click on any application to:
@@ -134,8 +144,8 @@ Job Tracker eliminates the pain of manually tracking job applications across mul
    - Position
    - Priority
 
-**[SCREENSHOT: "Dashboard table with multiple applications"]**
-**[SCREENSHOT: "Application detail modal/edit page"]**
+![Dashboard table with multiple applications](images/05-dashboard-table.png)
+![Application detail modal/edit page](images/06-dashboard-edit-modal.png)
 
 ### Real-time Updates
 
@@ -146,8 +156,9 @@ After saving an application in the extension:
 
 ![Dashboard after refresh showing new application](images/07-dashboard-new-app-saved.png)
 
-## 🌍 Live Demo
+## 🌍 Live Demo & Links
 
+- **Chrome Web Store**: https://chromewebstore.google.com/detail/oelhgkiopbnchopjgpilhdnpnkbponkf
 - **Dashboard**: https://job-tracker-gamma-three.vercel.app
 - **API Server**: https://job-tracker-api.railway.app
 
@@ -188,188 +199,4 @@ We use **Railway** for automatic deployment:
 4. Select "Deploy from GitHub repo"
 5. Authorize and select your `job_tracker` repository
 6. Railway automatically detects Node.js project
-7. Add environment variables (MongoDB URI, PORT, NODE_ENV)
-8. Railway automatically deploys on every push to main branch
-9. Get your API URL from Railway dashboard
-
-**Dashboard URL Pattern**: `https://job-tracker-api-production.up.railway.app`
-
-### Frontend (React)
-We use **Vercel** for automatic deployment:
-
-1. Push your code to GitHub
-2. Go to [Vercel.com](https://vercel.com)
-3. Click "New Project"
-4. Import your GitHub repository
-5. Select the `frontend` folder as root directory
-6. Add environment variable:
-   - `REACT_APP_API_URL` = your Railway backend URL
-7. Click "Deploy"
-8. Vercel automatically deploys on every push to main branch
-
-**Dashboard URL Pattern**: `https://job-tracker-dashboard.vercel.app`
-
-### Extension Deployment
-The extension loads locally from your file system in Developer Mode. For distribution:
-- Package the `extension` folder as a ZIP
-- Submit to [Chrome Web Store](https://chrome.google.com/webstore) (requires $5 one-time fee)
-
-## 🛠 Troubleshooting
-
-### Extension Issues
-
-**"Extension not loading"**
-- Ensure you loaded the correct folder (`extension` not `backend` or `frontend`)
-- Check that `manifest.json` exists in the extension folder
-- Try reloading the extension (click refresh icon on extension card in `chrome://extensions/`)
-
-**"Can't see the extension icon"**
-- Go to `chrome://extensions/` → Pin the Job Tracker icon
-- Or click the puzzle icon in toolbar and pin it
-
-**"Auto-fill not working on LinkedIn"**
-- Ensure you're on a LinkedIn job listing page (not search results)
-- Try refreshing the LinkedIn page (F5)
-- Verify the extension is enabled in `chrome://extensions/`
-
-### User ID Issues
-
-**"User ID rejected/not found"**
-- Verify you received confirmation email from vincent0109ccc@gmail.com
-- Check for typos in the User ID you entered
-- Request access again if needed
-
-**"Cannot save applications"**
-- Verify your User ID is correctly entered in extension settings
-- Check your internet connection
-- Ensure the backend server is online
-
-### Dashboard Issues
-
-**"Dashboard shows no applications"**
-- Verify you entered the correct User ID
-- Try refreshing the page (F5)
-- Check browser console (F12) for error messages
-- Ensure you've actually saved applications (they appear instantly after clicking Save)
-
-### API/Connection Issues
-
-**"CORS errors in browser console"**
-- This typically means the backend URL is incorrect
-- Verify `REACT_APP_API_URL` in your frontend `.env`
-- Check that the Railway backend is deployed and running
-
-**"Cannot connect to API"**
-- Check Railway dashboard to ensure backend is deployed
-- Verify MongoDB connection string is valid
-- Check backend logs on Railway for errors
-
-## 📊 Performance
-
-Job Tracker is built for speed:
-- **Extension**: Extracts data in <500ms
-- **Save**: Stores to database in ~1 second
-- **Dashboard**: Click save and refresh to see new applications instantly
-- **Database**: Optimized MongoDB queries keep response times under 100ms
-
-## 📁 Project Structure
-
-```
-job_tracker/
-├── client/                    # React Dashboard (Frontend)
-│   ├── public/
-│   │   ├── index.html
-│   │   ├── jobtracker.ico
-│   │   └── logo*.png
-│   ├── src/
-│   │   ├── components/
-│   │   ├── App.js
-│   │   ├── App.css
-│   │   ├── index.js
-│   │   ├── index.css
-│   │   ├── logo.svg
-│   │   └── shared-constants.js
-│   ├── package.json
-│   └── .env
-│
-├── extension/                 # Chrome Extension
-│   ├── icons/
-│   │   └── job-tracker-icon.png
-│   ├── manifest.json         # Extension configuration
-│   ├── popup.html            # Extension popup UI
-│   ├── popup.js              # Popup logic
-│   ├── content.js            # LinkedIn data extraction
-│   ├── styles.css            # Extension styles
-│   ├── shared-constants.js
-│   └── images/
-│
-├── server/                    # Express API Backend
-│   ├── src/
-│   │   └── index.js          # Main server file
-│   ├── package.json
-│   ├── .env
-│   ├── nixpacks.toml         # Railway deployment config
-│   └── shared-constants.js
-│
-├── shared-constants.js        # Root-level shared constants
-├── .gitignore
-├── LICENSE
-├── README.md
-├── images/                    # README screenshots
-│   ├── 01-extension-toolbar.png
-│   ├── 02-extension-settings.png
-│   ├── 03-linkedin-job-page.png
-│   ├── 04-extension-popup-fields.png
-│   ├── 05-dashboard-table.png
-│   ├── 06-dashboard-edit-modal.png
-│   └── 07-dashboard-new-app-saved.png
-└── ...
-```
-
-**Note**: Each part (client, server, extension) has its own `package.json` and can be developed/deployed independently.
-
-## 📝 How It Works Under the Hood
-
-1. **You click extension icon on LinkedIn job page**
-2. **Content script** extracts job data from the page HTML
-3. **Popup displays** the auto-filled information
-4. **You click Save**
-5. **Extension sends** data to backend API with your User ID
-6. **Backend validates** and stores in MongoDB
-7. **Dashboard fetches** your data when you visit (using your User ID)
-8. **You see** all your applications in real-time
-
-## 🤝 Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
-
-## 📜 License
-
-This project is licensed under the MIT License - see the [LICENSE](./LICENSE) file for details.
-
-## 💬 Support
-
-Have questions or issues?
-
-- **Email**: vincent0109ccc@gmail.com
-- **GitHub Issues**: [Open an issue](https://github.com/whc004/job_tracker/issues)
-
-## 🎯 Roadmap
-
-- [ ] Support for more job boards (Indeed, Glassdoor, etc.)
-- [ ] Email reminders for follow-ups
-- [ ] Salary data analytics
-- [ ] Application templates for quick responses
-- [ ] Interview prep integration
-
----
-
-**Happy job hunting! 🚀** 
-
-Built with ❤️ to make your job search easier.
+7. Ad
