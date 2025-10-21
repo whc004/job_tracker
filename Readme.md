@@ -88,7 +88,7 @@ For non-technical users who want to track their job applications.
 3. Click "Set User ID"
 4. You're ready to start!
 
-![Extension popup with User ID input field](images/02-extension-settings.png | width=400)
+<img src="images/02-extension-settings.png" width="400">
 
 ## How to Use
 
@@ -99,8 +99,8 @@ For non-technical users who want to track their job applications.
 2. Click the Job Tracker extension icon
 4. Click "Mark as Applied"
 5. See confirmation notification
-
-![LinkedIn job page with extension popup showing auto-filled data](images/03-linkedin-job-page.png | width=400)
+6. 
+<img src="images/03-linkedin-job-page.png" width="400">
 
 ### View Your Applications
 
