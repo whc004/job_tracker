@@ -112,8 +112,8 @@ Or see the [Developer Guide](#developer-guide) to set up locally.
 2. Enter your User ID
 3. Click **"Access Dashboard"**
 4. See all your saved job applications in one place
-
-<img src="images/05-dashboard-table.png" width="400">
+<img src="images/09-dashboard-log-in-page.png">
+<img src="images/05-dashboard-table.png">
 
 ### Manage Your Applications
 
@@ -133,7 +133,7 @@ Or see the [Developer Guide](#developer-guide) to set up locally.
 5. Set a follow-up date to remind yourself
 6. Click **"Save"** when done
 
-<img src="images/06-dashboard-edit-modal.png" width="400">
+<img src="images/06-dashboard-edit-modal.png">
 
 ### Track Your Progress in Real-Time
 
@@ -141,7 +141,7 @@ Or see the [Developer Guide](#developer-guide) to set up locally.
 2. Refresh the page (press F5 on keyboard or Cmd+R on Mac)
 3. Your new application appears instantly on the dashboard
 
-<img src="images/07-dashboard-new-app-saved.png" width="400">
+<img src="images/07-dashboard-new-app-saved.png">
 
 ---
 
