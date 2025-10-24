@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "LinkedIn Job Tracker",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Track and save LinkedIn job applications",
   "permissions": ["storage"],
   "host_permissions": ["*://*.linkedin.com/*"],

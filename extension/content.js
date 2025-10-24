@@ -77,7 +77,7 @@ class LinkedInJobExtractor {
     
     const checkForButton = () => {
       attempts++;
-      const saveButton = document.querySelector('.jobs-save-button');
+      const saveButton = document.querySelector('.jobs-save-button') || document.querySelector('[data-view-name="job-save-button"]');
       const existingButton = document.getElementById('job-tracker-extract-btn');
       
       if (saveButton && !existingButton) {
@@ -152,7 +152,7 @@ class LinkedInJobExtractor {
     }
 
     // Try multiple possible container locations
-    const saveButton = document.querySelector('.jobs-save-button');
+    const saveButton = document.querySelector('.jobs-save-button') || document.querySelector('[data-view-name="job-save-button"]');
     if (!saveButton) {
       debugLog('⚠️ Save button not found, will retry...');
       return false; // Indicate failure
@@ -203,7 +203,11 @@ class LinkedInJobExtractor {
       debugLog('✅ Button added (fallback method)');
       return true;
     }
+    debugLog('🔍 saveButton:', saveButton);
+    debugLog('🔍 saveButton.parentElement:', saveButton.parentElement);
+    debugLog('🔍 displayFlexContainer:', saveButton.closest('.display-flex'));
     
+
     debugLog('❌ Could not find container for button');
     return false;
   }
@@ -236,6 +240,7 @@ class LinkedInJobExtractor {
     
     let jobUrl = this.extractJobURL(window.location.href);
     if (!jobUrl) jobUrl = window.location.href;
+    debugLog(' URL : ' + jobUrl);
     
     // Extract LinkedIn Job ID for duplicate detection
     const linkedinJobId = this.extractJobId(jobUrl);
@@ -265,7 +270,7 @@ class LinkedInJobExtractor {
         
       // Application tracking fields
       applicationStatus: constants.JOB_STATUS.APPLIED,
-      applicationDate: new Date().toISOString().split('T')[0],
+      applicationDate: new Date().toISOString(),
       notes: '',
       priority: constants.PRIORITY_LEVELS.NORMAL,
       
@@ -279,15 +284,28 @@ class LinkedInJobExtractor {
   }
 
   extractJobURL(currentUrl) {
-    // Check current URL first
+    debugLog('🔍 Extracting job URL from:', currentUrl);
+  
+    // ========== PRIMARY: Check for currentJobId parameter (search results page) ==========
+    const currentJobIdMatch = currentUrl.match(/currentJobId=(\d+)/);
+    if (currentJobIdMatch && currentJobIdMatch[1]) {
+      const jobId = currentJobIdMatch[1];
+      const jobUrl = `https://www.linkedin.com/jobs/view/${jobId}`;
+      debugLog('✅ Job URL from currentJobId:', jobUrl);
+      return jobUrl;
+    }
+    
+    // ========== SECONDARY: Check for /jobs/view/ in URL (direct job page) ==========
     if (currentUrl.includes('/jobs/view/')) {
       const match = currentUrl.match(/\/jobs\/view\/\d+/);
       if (match) {
-        return `https://www.linkedin.com${match[0]}`;
+        const jobUrl = `https://www.linkedin.com${match[0]}`;
+        debugLog('✅ Job URL from /jobs/view/:', jobUrl);
+        return jobUrl;
       }
     }
     
-    // Find any link with /jobs/view/ in href
+    // ========== TERTIARY: Fallback to DOM link (last resort) ==========
     const link = document.querySelector('a[href*="/jobs/view/"]');
     if (link) {
       const href = link.getAttribute('href');
@@ -300,22 +318,32 @@ class LinkedInJobExtractor {
         
         if (jobId) {
           const cleanUrl = `https://www.linkedin.com/jobs/view/${jobId[0]}`;
+          debugLog('✅ Job URL from DOM link:', cleanUrl);
           return cleanUrl;
         }
       }
     }
     
-    debugLog('No job URL found');
+    debugLog('❌ No job URL found');
     return null;
   }
 
   extractJobposition() {
-    const link = document.querySelector('a[href*="/jobs/view/"]');
-    if (link && link.textContent.trim()) {
-      const position = link.textContent.trim();
-      return position;
-    }
+    debugLog('🔍 Extracting job position...');
     
+    // Helper function to clean position text
+    const cleanPosition = (text) => {
+      if (!text) return '';
+      // Remove extra whitespace and newlines
+      text = text.trim();
+      // Split by newline and take only the first meaningful line
+      const lines = text.split('\n').map(line => line.trim()).filter(line => line.length > 0);
+      if (lines.length > 0) {
+        return lines[0];
+      }
+      return text;
+    };
+    debugLog(' Go PRIMARY ');
     const selectors = [
       'h1.job-details-jobs-unified-top-card__job-title',
       'h1.jobs-unified-top-card__job-title',
@@ -329,13 +357,25 @@ class LinkedInJobExtractor {
       const element = document.querySelector(selector);
       
       if (element && element.textContent.trim()) {
-        const position = element.textContent.trim();
-        debugLog('✓ SUCCESS - position found:', position);
+        const position = cleanPosition(element.textContent);
+        if (position && position.length > 0) {
+          debugLog('✅ Position from selector:', position);
+          return position;
+        }
+      }
+    }
+    
+    debugLog(' Go SECONDARY ');
+    const link = document.querySelector('a[href*="/jobs/view/"]');
+    if (link && link.textContent.trim()) {
+      const position = cleanPosition(link.textContent);
+      if (position && position.length > 0) {
+        debugLog('✅ Position from link:', position);
         return position;
       }
     }
     
-    debugLog('All selectors failed - returning fallback');
+    debugLog('❌ All selectors failed - returning fallback');
     return 'Job position Not Found';
   }
 
@@ -431,8 +471,13 @@ class LinkedInJobExtractor {
       }
 
       // ========== SALARY ==========
-      if (!result.salary && /\$[\d,]+[Kk]?/.test(text)) {
-        result.salary = (button.textContent || '').trim();
+      if (!result.salary) {
+        const salaryMatch = button.textContent.match(/\$[\d,]+(?:\.\d{1,2})?\/(?:yr|year|hr)\s*-\s*\$[\d,]+(?:\.\d{1,2})?\/(?:yr|year|hr)|\$[\d,]+(?:\.\d{1,2})?[Kk]?\s*-\s*\$[\d,]+(?:\.\d{1,2})?[Kk]?|\$[\d,]+(?:\.\d{1,2})?\/(?:yr|year|hr)|\$[\d,]+(?:\.\d{1,2})?[Kk]?/);
+        
+        if (salaryMatch) {
+          result.salary = salaryMatch[0].trim();
+          debugLog('✅ Salary found (preference button):', result.salary);
+        }
       }
 
       // ========== EXPERIENCE LEVEL ==========
@@ -467,8 +512,13 @@ class LinkedInJobExtractor {
         }
 
         // Fill in missing salary
-        if (!result.salary && /\$[\d,]+[Kk]?/.test(text)) {
-          result.salary = (element.textContent || '').trim();
+        if (!result.salary) {
+          const salaryMatch = element.textContent.match(/\$[\d,]+(?:\.\d{1,2})?\/(?:yr|year|hr)\s*-\s*\$[\d,]+(?:\.\d{1,2})?\/(?:yr|year|hr)|\$[\d,]+(?:\.\d{1,2})?[Kk]?\s*-\s*\$[\d,]+(?:\.\d{1,2})?[Kk]?|\$[\d,]+(?:\.\d{1,2})?\/(?:yr|year|hr)|\$[\d,]+(?:\.\d{1,2})?[Kk]?/);
+          
+          if (salaryMatch) {
+            result.salary = salaryMatch[0].trim();
+            debugLog('✅ Salary found (preference button):', result.salary);
+          }
         }
       }
     }
@@ -491,16 +541,6 @@ class LinkedInJobExtractor {
     if (result.experienceLevel === constants.EXPERIENCE_LEVELS.NOT_SPECIFIED) {
       for (const [levelKey, synonyms] of Object.entries(constants.EXPERIENCE_SYNONYMS || {})) {
         if (synonyms.some(syn => position.includes(syn))) {
-          result.experienceLevel = constants.EXPERIENCE_LEVELS[levelKey];
-          break;
-        }
-      }
-    }
-
-    // Fallback: check page text for experience level
-    if (result.experienceLevel === constants.EXPERIENCE_LEVELS.NOT_SPECIFIED) {
-      for (const [levelKey, synonyms] of Object.entries(constants.EXPERIENCE_SYNONYMS || {})) {
-        if (synonyms.some(syn => pageText.includes(syn))) {
           result.experienceLevel = constants.EXPERIENCE_LEVELS[levelKey];
           break;
         }
@@ -670,7 +710,6 @@ class LinkedInJobExtractor {
       }
     }, 7000);
   }
-
   observeJobSelection() {
     let debounceTimer = null;
     let lastJobUrl = window.location.href;
@@ -712,14 +751,19 @@ class LinkedInJobExtractor {
       debounceTimer = setTimeout(() => {
         isProcessing = true;
         
-        const saveButton = document.querySelector('.jobs-save-button');
+        const saveButton = document.querySelector('.jobs-save-button') || document.querySelector('[data-view-name="job-save-button"]');
         const existingButton = document.getElementById('job-tracker-extract-btn');
         
         if (saveButton && !existingButton && this.userId) {
           debugLog('➕ Adding button to new job...');
           this.addExtractButton();
           this.extractJobData();
-        } else if (existingButton && !saveButton) {
+        } 
+        debugLog('🔄 Refreshing job snapshot...');
+        this.extractJobData();
+
+        
+        if (existingButton && !saveButton) {
           debugLog('🗑️ Removing orphaned button...');
           existingButton.remove();
         }
