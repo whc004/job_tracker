@@ -471,14 +471,20 @@ class LinkedInJobExtractor {
       }
 
       // ========== SALARY ==========
+      if (!result.salary && /\$[\d,]+[Kk]?/.test(text)) {
+        result.salary = (button.textContent || '').trim();
+      }
+      /*
       if (!result.salary) {
-        const salaryMatch = button.textContent.match(/\$[\d,]+(?:\.\d{1,2})?\/(?:yr|year|hr)\s*-\s*\$[\d,]+(?:\.\d{1,2})?\/(?:yr|year|hr)|\$[\d,]+(?:\.\d{1,2})?[Kk]?\s*-\s*\$[\d,]+(?:\.\d{1,2})?[Kk]?|\$[\d,]+(?:\.\d{1,2})?\/(?:yr|year|hr)|\$[\d,]+(?:\.\d{1,2})?[Kk]?/);
+        const salaryMatch = button.textContent.match( /\$[\d,]+(?:\.\d{1,2})?[Kk]?\/(?:yr|year|hr)\s*-\s*\$[\d,]+(?:\.\d{1,2})?[Kk]?\/(?:yr|year|hr)|\$[\d,]+(?:\.\d{1,2})?[Kk]?\s*-\s*\$[\d,]+(?:\.\d{1,2})?[Kk]?|\$[\d,]+(?:\.\d{1,2})?[Kk]?\/(?:yr|year|hr)|\$[\d,]+(?:\.\d{1,2})?[Kk]?/ );
         
         if (salaryMatch) {
           result.salary = salaryMatch[0].trim();
           debugLog('✅ Salary found (preference button):', result.salary);
         }
       }
+        */
+       
 
       // ========== EXPERIENCE LEVEL ==========
       if (result.experienceLevel === constants.EXPERIENCE_LEVELS.NOT_SPECIFIED) {
@@ -490,7 +496,7 @@ class LinkedInJobExtractor {
         }
       }
     }
-
+    
     // Second pass: check job insight sections if we missed anything
     const selectors = constants.SELECTORS?.INSIGHT_TEXT || [
       '.job-details-jobs-unified-top-card__job-insight .tvm__text',
@@ -510,16 +516,17 @@ class LinkedInJobExtractor {
             }
           }
         }
-
+        /*
         // Fill in missing salary
         if (!result.salary) {
           const salaryMatch = element.textContent.match(/\$[\d,]+(?:\.\d{1,2})?\/(?:yr|year|hr)\s*-\s*\$[\d,]+(?:\.\d{1,2})?\/(?:yr|year|hr)|\$[\d,]+(?:\.\d{1,2})?[Kk]?\s*-\s*\$[\d,]+(?:\.\d{1,2})?[Kk]?|\$[\d,]+(?:\.\d{1,2})?\/(?:yr|year|hr)|\$[\d,]+(?:\.\d{1,2})?[Kk]?/);
           
           if (salaryMatch) {
             result.salary = salaryMatch[0].trim();
-            debugLog('✅ Salary found (preference button):', result.salary);
+            debugLog('✅ Salary found ( second button):', result.salary);
           }
         }
+          */
       }
     }
 
@@ -546,7 +553,7 @@ class LinkedInJobExtractor {
         }
       }
     }
-
+    
     return result;
   }
 
