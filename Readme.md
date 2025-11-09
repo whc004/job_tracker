@@ -103,7 +103,7 @@ Or see the [Developer Guide](#developer-guide) to set up locally.
 4. Click **"Mark as Applied"** button
 5. You'll see a confirmation notification
 
-<img src="images/04-extension-popup-fields.png" width="400">
+<img src="images/04-extension-popup-fields.png" width="600">
 
 
 ### View Your Applications
