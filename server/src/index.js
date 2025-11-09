@@ -10,7 +10,7 @@ const {
   JOB_TYPE_OPTIONS,
   WORK_ARRANGEMENT_OPTIONS,
   EXPERIENCE_LEVEL_OPTIONS
-} = require('../shared-constants');
+} = require('../shared-constants.js');
 
 const express = require('express');
 const mongoose = require('mongoose');
