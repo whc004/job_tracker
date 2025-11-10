@@ -33,7 +33,8 @@ const VALID_USER_IDS = new Set([
   'job-tracker-leo',
   'job-tracker-duan',
   'job-tracker-adeline',
-  'job-tracker-yu'
+  'job-tracker-yu',
+  'guest'
 ]);
 
 // ==================== MIDDLEWARE ====================

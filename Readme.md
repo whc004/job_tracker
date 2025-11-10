@@ -65,7 +65,7 @@ Or see the [Developer Guide](#developer-guide) to set up locally.
 
 # For Non-Technical Users: Track Your Job Applications
 
-## Getting Started (Easy Setup)
+## Getting Started with Job Tracker (Easy Setup)
 
 ### Step 1: Install Extension
 1. Click **[Get Job Tracker on Chrome Web Store](https://chromewebstore.google.com/detail/oelhgkiopbnchopjgpilhdnpnkbponkf)**
@@ -75,21 +75,58 @@ Or see the [Developer Guide](#developer-guide) to set up locally.
 
 ![Chrome extension icon in toolbar](images/01-extension-toolbar.png)
 
-### Step 2: Get Your User ID
+---
+
+### Step 2: Choose Your Access Method
+
+You have two options to start using Job Tracker:
+
+**Option A: Try as a Guest (No Setup Required)**
+- Use the extension immediately without any email requests
+- Perfect for testing all the features before committing
+- Guest data is stored locally in your browser
+
+**Option B: Request a Personal User ID (Recommended for Regular Use)**
+- Get your own unique User ID for better data management
+- Follow the steps below to request access
+
+---
+
+### Step 3: Set Up the Extension
+
+#### For Guest Users:
+1. Click the Job Tracker icon in your toolbar
+2. Select **"Use as Guest"** button
+3. You're ready to start tracking jobs!
+
+![Job Tracker guest setup](images/03-linkedin-job-page.png)
+
+#### For Registered Users:
 1. Send an email to **vincent0109ccc@gmail.com**
 2. **Subject:** "Job Tracker Access Request"
 3. **Message:** "I want to use Job Tracker. My preferred User ID is: [your_choice]"
 4. **Examples:** `john_jobs`, `job_tracker_2025`, `sarah_applications`
 5. Receive your User ID confirmation via email
 
-### Step 3: Set Up the Extension
+### Step 4: Activate Your User ID
+
 1. Click the Job Tracker icon in your toolbar
 2. Paste your User ID in the input field
 3. Click "Set User ID"
-<img src="images/02-extension-settings.png" width="400">
+
+![Job Tracker extension settings](images/02-extension-settings.png)
 
 4. You're ready to start!
-<img src="images/03-linkedin-job-page.png" width="400">
+
+![Job Tracker on LinkedIn job page](images/03-linkedin-job-page.png)
+
+---
+
+### Tips
+
+- **Just exploring?** Start as a guest to try all features without commitment
+- **Ready for more?** Request a personal User ID for enhanced data organization
+- **Need help?** Contact vincent0109ccc@gmail.com with any questions
 
 ---
 
