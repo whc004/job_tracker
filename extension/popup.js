@@ -168,7 +168,7 @@ async function handleUserIdSubmission() {
 // ========================================
 async function showMainInterface(userId) {
     debugLog('🎨 Rendering main interface for:', userId);
-    
+
     // First, show loading state immediately
     document.body.innerHTML = `
         <div style="width: 420px; padding: 16px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; background: #f8f9fa;">
@@ -181,17 +181,21 @@ async function showMainInterface(userId) {
                 <button id="changeUserIdBtn" style="float: right; background: none; border: none; color: #1976d2; cursor: pointer; font-size: 10px; text-decoration: underline;">Change</button>
             </div>
 
-            <div style="background: white; padding: 16px; border-radius: 6px; margin-bottom: 16px; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+            <div id="statsOrAnalysis" style="background: white; padding: 16px; border-radius: 6px; margin-bottom: 16px; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
                 <div style="font-size: 32px; font-weight: bold; color: #0073b1;" id="jobCount">
                     <div class="spinner" style="border: 3px solid #f3f3f3; border-top: 3px solid #0073b1; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; margin: 0 auto;"></div>
                 </div>
-                <div style="color: #666; font-size: 14px;">Jobs Saved</div>
+                <div style="color: #666; font-size: 14px;">${window.JobTrackerConstants.AI_TEXT.JOBS_SAVED}</div>
             </div>
 
-            <button id="openDashboard" style="width: 100%; padding: 12px; background: #0073b1; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 500; margin-bottom: 16px;">
+            <button id="compareBtn" style="width: 100%; padding: 12px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 500; margin-bottom: 12px; display: none;">
+                ${window.JobTrackerConstants.AI_TEXT.COMPARE_BUTTON}
+            </button>
+
+            <button id="openDashboard" style="width: 100%; padding: 12px; background: #0073b1; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 500; margin-bottom: 12px;">
                 📊 Open Dashboard
             </button>
-            
+
             <button id="refreshBtn" style="width: 100%; padding: 10px; background: white; color: #0073b1; border: 1px solid #0073b1; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 500; margin-bottom: 16px;">
                 🔄 Refresh from Server
             </button>
@@ -202,12 +206,12 @@ async function showMainInterface(userId) {
                     Syncing with server...
                 </div>
             </div>
-            
+
             <div id="lastSync" style="text-align: center; color: #999; font-size: 11px; margin-top: 8px;">
                 Last synced: Loading...
             </div>
         </div>
-        
+
         <style>
             @keyframes spin {
                 0% { transform: rotate(0deg); }
@@ -215,12 +219,15 @@ async function showMainInterface(userId) {
             }
         </style>
     `;
-    
+
     // Set up event listeners FIRST
     setupEventListeners(userId);
-    
+
     // Then fetch and sync with server
     await syncWithServer(userId);
+
+    // Check if on LinkedIn job page and show Compare button
+    await checkLinkedInPage(userId);
 }
 
 // ========================================
@@ -555,7 +562,7 @@ function getTimeAgo(date) {
 function renderError(userId) {
     const dynamicContent = document.getElementById('dynamicContent');
     if (!dynamicContent) return;
-    
+
     dynamicContent.innerHTML = `
         <div style="text-align: center; padding: 20px;">
             <div style="font-size: 48px; margin-bottom: 12px;">⚠️</div>
@@ -570,7 +577,7 @@ function renderError(userId) {
             </button>
         </div>
     `;
-    
+
     const retryBtn = document.getElementById('retryBtn');
     if (retryBtn) {
         retryBtn.addEventListener('click', async function() {
@@ -578,5 +585,260 @@ function renderError(userId) {
             retryBtn.disabled = true;
             await syncWithServer(userId);
         });
+    }
+}
+
+// ========================================
+// AI COMPARISON FEATURES
+// ========================================
+
+async function checkLinkedInPage(userId) {
+    try {
+        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+
+        if (tab && tab.url && tab.url.includes('linkedin.com/jobs/view')) {
+            debugLog('✅ On LinkedIn job page, showing Compare button');
+            const compareBtn = document.getElementById('compareBtn');
+            if (compareBtn) {
+                compareBtn.style.display = 'block';
+                compareBtn.addEventListener('click', () => handleCompareClick(userId, tab.id));
+            }
+        }
+    } catch (error) {
+        debugError('Error checking LinkedIn page:', error);
+    }
+}
+
+async function handleCompareClick(userId, tabId) {
+    const compareBtn = document.getElementById('compareBtn');
+    const statsSection = document.getElementById('statsOrAnalysis');
+    const AI = window.JobTrackerConstants.AI_TEXT;
+
+    try {
+        // Show loading
+        compareBtn.textContent = AI.COMPARE_ANALYZING;
+        compareBtn.disabled = true;
+
+        statsSection.innerHTML = `
+            <div style="padding: 20px;">
+                <div class="spinner" style="border: 3px solid #f3f3f3; border-top: 3px solid #667eea; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 0 auto 12px;"></div>
+                <div style="color: #666; font-size: 14px;">${AI.ANALYZING_MESSAGE}</div>
+            </div>
+        `;
+
+        // Get job description from content script
+        const response = await chrome.tabs.sendMessage(tabId, { action: 'getJobDescription' });
+
+        if (!response || !response.description) {
+            throw new Error(AI.ERROR_NO_DESCRIPTION);
+        }
+
+        debugLog('📄 Job description extracted, calling AI API...');
+
+        // Call AI analysis API
+        const analysis = await analyzeJobWithAI(userId, response.description);
+
+        // Display results
+        displayAIAnalysis(analysis);
+
+        compareBtn.textContent = AI.COMPARE_COMPLETE;
+        setTimeout(() => {
+            compareBtn.textContent = AI.COMPARE_BUTTON;
+            compareBtn.disabled = false;
+        }, 2000);
+
+    } catch (error) {
+        debugError('Error in AI comparison:', error);
+        compareBtn.textContent = AI.COMPARE_BUTTON;
+        compareBtn.disabled = false;
+
+        statsSection.innerHTML = `
+            <div style="padding: 16px; text-align: center;">
+                <div style="font-size: 32px; margin-bottom: 12px;">⚠️</div>
+                <div style="color: #dc3545; font-size: 14px; font-weight: 500; margin-bottom: 8px;">
+                    ${error.message || AI.ERROR_ANALYSIS_FAILED}
+                </div>
+                <div style="color: #666; font-size: 12px;">
+                    ${error.message.includes('resume') ?
+                        AI.ERROR_UPLOAD_RESUME_FIRST :
+                        AI.ERROR_NOT_LINKEDIN}
+                </div>
+            </div>
+        `;
+    }
+}
+
+async function analyzeJobWithAI(userId, jobDescription) {
+    const API_URL = 'https://jobtracker-production-2ed3.up.railway.app/api';
+
+    const response = await fetch(`${API_URL}/ai/analyze`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'x-user-id': userId
+        },
+        body: JSON.stringify({
+            jobDescription: jobDescription
+        })
+    });
+
+    const result = await response.json();
+
+    if (!response.ok || !result.success) {
+        throw new Error(result.message || 'AI analysis failed');
+    }
+
+    return result.data;
+}
+
+function displayAIAnalysis(analysis) {
+    const statsSection = document.getElementById('statsOrAnalysis');
+    const AI = window.JobTrackerConstants.AI_TEXT;
+
+    const matchScoreColor =
+        analysis.matchScore >= 80 ? AI.MATCH_COLOR_HIGH :
+        analysis.matchScore >= 60 ? AI.MATCH_COLOR_MED : AI.MATCH_COLOR_LOW;
+
+    const stars = '⭐'.repeat(Math.ceil(analysis.matchScore / 20));
+
+    statsSection.innerHTML = `
+        <div style="padding: 16px;">
+            <div style="font-size: 14px; color: #666; margin-bottom: 8px;">${AI.AI_MATCH_SCORE}</div>
+            <div style="font-size: 36px; font-weight: bold; color: ${matchScoreColor}; margin-bottom: 4px;">
+                ${analysis.matchScore}%
+            </div>
+            <div style="font-size: 18px; margin-bottom: 12px;">${stars}</div>
+
+            <div style="text-align: left; margin-top: 16px;">
+                ${analysis.matchingSkills && analysis.matchingSkills.length > 0 ? `
+                    <div style="margin-bottom: 12px;">
+                        <div style="font-size: 12px; font-weight: 600; color: ${AI.MATCH_COLOR_HIGH}; margin-bottom: 4px;">
+                            ✅ ${AI.YOU_HAVE} (${analysis.matchingSkills.length}):
+                        </div>
+                        <div style="font-size: 11px; color: #666;">
+                            ${analysis.matchingSkills.slice(0, 5).join(', ')}
+                            ${analysis.matchingSkills.length > 5 ? '...' : ''}
+                        </div>
+                    </div>
+                ` : ''}
+
+                ${analysis.missingSkills && analysis.missingSkills.length > 0 ? `
+                    <div style="margin-bottom: 12px;">
+                        <div style="font-size: 12px; font-weight: 600; color: ${AI.MATCH_COLOR_MED}; margin-bottom: 4px;">
+                            ⚠️ ${AI.MISSING} (${analysis.missingSkills.length}):
+                        </div>
+                        <div style="font-size: 11px; color: #666;">
+                            ${analysis.missingSkills.slice(0, 3).join(', ')}
+                            ${analysis.missingSkills.length > 3 ? '...' : ''}
+                        </div>
+                    </div>
+                ` : ''}
+
+                ${analysis.recommendation ? `
+                    <div style="background: #e3f2fd; padding: 10px; border-radius: 4px; font-size: 11px; color: #1976d2; line-height: 1.4;">
+                        💡 ${analysis.recommendation}
+                    </div>
+                ` : ''}
+            </div>
+
+            <button id="viewDetailsBtn" style="width: 100%; margin-top: 12px; padding: 8px; background: white; color: #667eea; border: 1px solid #667eea; border-radius: 4px; cursor: pointer; font-size: 12px;">
+                ${AI.VIEW_DETAILS_EXPAND}
+            </button>
+        </div>
+    `;
+
+    // Add click handler for "View Details" button
+    const viewDetailsBtn = document.getElementById('viewDetailsBtn');
+    if (viewDetailsBtn) {
+        viewDetailsBtn.addEventListener('click', () => toggleFullAnalysis(analysis, viewDetailsBtn));
+    }
+}
+
+function toggleFullAnalysis(analysis, button) {
+    const statsSection = document.getElementById('statsOrAnalysis');
+    const AI = window.JobTrackerConstants.AI_TEXT;
+
+    if (button.textContent.includes('▼')) {
+        // Expand to show full analysis
+        button.textContent = AI.VIEW_DETAILS_COLLAPSE;
+
+        const matchScoreColor =
+            analysis.matchScore >= 80 ? AI.MATCH_COLOR_HIGH :
+            analysis.matchScore >= 60 ? AI.MATCH_COLOR_MED : AI.MATCH_COLOR_LOW;
+
+        const stars = '⭐'.repeat(Math.ceil(analysis.matchScore / 20));
+
+        statsSection.innerHTML = `
+            <div style="padding: 16px; max-height: 400px; overflow-y: auto;">
+                <div style="text-align: center; margin-bottom: 16px;">
+                    <div style="font-size: 14px; color: #666; margin-bottom: 8px;">${AI.AI_MATCH_SCORE}</div>
+                    <div style="font-size: 36px; font-weight: bold; color: ${matchScoreColor};">
+                        ${analysis.matchScore}%
+                    </div>
+                    <div style="font-size: 18px;">${stars}</div>
+                </div>
+
+                <div style="text-align: left;">
+                    ${analysis.matchingSkills && analysis.matchingSkills.length > 0 ? `
+                        <div style="margin-bottom: 12px; padding: 10px; background: #e8f5e9; border-radius: 4px;">
+                            <div style="font-size: 12px; font-weight: 600; color: ${AI.MATCH_COLOR_HIGH}; margin-bottom: 6px;">
+                                ✅ ${AI.MATCHING_SKILLS} (${analysis.matchingSkills.length}):
+                            </div>
+                            <div style="font-size: 11px; color: #666; line-height: 1.5;">
+                                ${analysis.matchingSkills.map(s => `• ${s}`).join('<br>')}
+                            </div>
+                        </div>
+                    ` : ''}
+
+                    ${analysis.missingSkills && analysis.missingSkills.length > 0 ? `
+                        <div style="margin-bottom: 12px; padding: 10px; background: #fff3e0; border-radius: 4px;">
+                            <div style="font-size: 12px; font-weight: 600; color: ${AI.MATCH_COLOR_MED}; margin-bottom: 6px;">
+                                ⚠️ ${AI.SKILLS_TO_LEARN} (${analysis.missingSkills.length}):
+                            </div>
+                            <div style="font-size: 11px; color: #666; line-height: 1.5;">
+                                ${analysis.missingSkills.map(s => `• ${s}`).join('<br>')}
+                            </div>
+                        </div>
+                    ` : ''}
+
+                    ${analysis.keyRequirements && analysis.keyRequirements.length > 0 ? `
+                        <div style="margin-bottom: 12px; padding: 10px; background: #f5f5f5; border-radius: 4px;">
+                            <div style="font-size: 12px; font-weight: 600; color: #333; margin-bottom: 6px;">
+                                📋 ${AI.KEY_REQUIREMENTS}:
+                            </div>
+                            <div style="font-size: 11px; color: #666; line-height: 1.5;">
+                                ${analysis.keyRequirements.map(req =>
+                                    `${req.hasIt ? '✓' : '✗'} ${req.requirement}`
+                                ).join('<br>')}
+                            </div>
+                        </div>
+                    ` : ''}
+
+                    ${analysis.detailedAnalysis ? `
+                        <div style="margin-bottom: 12px; padding: 10px; background: #e3f2fd; border-radius: 4px;">
+                            <div style="font-size: 12px; font-weight: 600; color: #1976d2; margin-bottom: 6px;">
+                                💡 ${AI.ANALYSIS}:
+                            </div>
+                            <div style="font-size: 11px; color: #666; line-height: 1.5;">
+                                ${analysis.detailedAnalysis}
+                            </div>
+                        </div>
+                    ` : ''}
+                </div>
+
+                <button id="viewDetailsBtn" style="width: 100%; margin-top: 12px; padding: 8px; background: white; color: #667eea; border: 1px solid #667eea; border-radius: 4px; cursor: pointer; font-size: 12px;">
+                    ${AI.VIEW_DETAILS_COLLAPSE}
+                </button>
+            </div>
+        `;
+
+        // Re-attach event listener
+        const newBtn = document.getElementById('viewDetailsBtn');
+        if (newBtn) {
+            newBtn.addEventListener('click', () => displayAIAnalysis(analysis));
+        }
+    } else {
+        // Collapse back to summary view
+        displayAIAnalysis(analysis);
     }
 }

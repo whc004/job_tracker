@@ -251,7 +251,46 @@ const API_ENDPOINTS = {
   STATISTICS: '/api/statistics',
   CSV_IMPORT: '/api/csv/import',
   CSV_EXPORT: '/api/csv/export',
-  CONSTANTS: '/api/constants'
+  CONSTANTS: '/api/constants',
+  AI_ANALYZE: '/api/ai/analyze',
+  USER_RESUMES: (userId) => `/api/users/${userId}/resumes`
+};
+
+// ==================== AI FEATURE ====================
+const AI_TEXT = {
+  // Button Labels
+  COMPARE_BUTTON: '🤖 Compare with Resume',
+  COMPARE_ANALYZING: '⏳ Analyzing...',
+  COMPARE_COMPLETE: '✅ Analysis Complete',
+
+  // Status Messages
+  ANALYZING_MESSAGE: 'Comparing with your resume...',
+  JOBS_SAVED: 'Jobs Saved',
+  AI_MATCH_SCORE: 'AI Match Score',
+
+  // Section Titles
+  YOU_HAVE: 'You Have',
+  MISSING: 'Missing',
+  MATCHING_SKILLS: 'Matching Skills',
+  SKILLS_TO_LEARN: 'Skills to Learn',
+  KEY_REQUIREMENTS: 'Key Requirements',
+  ANALYSIS: 'Analysis',
+
+  // Action Buttons
+  VIEW_DETAILS_EXPAND: 'View Full Analysis ▼',
+  VIEW_DETAILS_COLLAPSE: 'View Less ▲',
+
+  // Error Messages
+  ERROR_NO_DESCRIPTION: 'Could not extract job description from page',
+  ERROR_NO_RESUME: 'Please upload a resume first',
+  ERROR_NOT_LINKEDIN: 'Make sure you are on a LinkedIn job page',
+  ERROR_ANALYSIS_FAILED: 'Analysis failed',
+  ERROR_UPLOAD_RESUME_FIRST: 'Please upload your resume in the dashboard first',
+
+  // Match Score Colors
+  MATCH_COLOR_HIGH: '#4CAF50',  // Green (80%+)
+  MATCH_COLOR_MED: '#FF9800',   // Orange (60-79%)
+  MATCH_COLOR_LOW: '#dc3545'    // Red (<60%)
 };
 
 // ==================== STORAGE / VALIDATION / DATES ====================
@@ -320,6 +359,7 @@ if (typeof window !== 'undefined') {
     API_ENDPOINTS,
     STORAGE_KEYS,
     VALIDATION,
-    DATE_FORMATS
+    DATE_FORMATS,
+    AI_TEXT
   };
 }
