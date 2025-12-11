@@ -19,6 +19,7 @@ const dotenv = require('dotenv');
 const multer = require('multer');
 const csvParser = require('csv-parser');
 const fs = require('fs');
+const { GoogleGenerativeAI } = require('@google/generative-ai');
 
 dotenv.config();
 
@@ -225,10 +226,26 @@ const jobApplicationSchema = new mongoose.Schema({
   lastStatusUpdate: { type: Date, default: Date.now },
   notes: { type: String, maxlength: 1000 },
   contactPerson: { type: String, trim: true },
-  priority: { 
-    type: String, 
+  priority: {
+    type: String,
     enum: PRIORITY_OPTIONS,
     default: PRIORITY_LEVELS.NORMAL
+  },
+  aiAnalysis: {
+    matchScore: { type: Number },
+    matchingSkills: [String],
+    missingSkills: [String],
+    strengths: [String],
+    weaknesses: [String],
+    keyRequirements: [{
+      requirement: String,
+      hasIt: Boolean
+    }],
+    recommendation: String,
+    detailedAnalysis: String,
+    resumeUsed: String,
+    resumeName: String,
+    analyzedAt: Date
   }
 }, { timestamps: true });
 
@@ -240,7 +257,78 @@ jobApplicationSchema.index({ userId: 1, jobUrl: 1 }, {
 });
 
 const JobApplication = mongoose.model('JobApplication', jobApplicationSchema);
+
+// ==================== USER SCHEMA (for resumes) ====================
+const userSchema = new mongoose.Schema({
+  userId: { type: String, required: true, unique: true, index: true, trim: true },
+  resumes: [{
+    id: { type: String, required: true },
+    name: { type: String, required: true, trim: true },
+    text: { type: String, required: true },
+    fileName: { type: String, trim: true },
+    isActive: { type: Boolean, default: false },
+    uploadedAt: { type: Date, default: Date.now },
+    updatedAt: { type: Date, default: Date.now }
+  }],
+  createdAt: { type: Date, default: Date.now }
+});
+
+const User = mongoose.model('User', userSchema);
 const upload = multer({ dest: '../uploads/' });
+
+// ==================== GEMINI AI SETUP ====================
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
+
+async function analyzeJobWithAI(jobDescription, resumeText) {
+  try {
+    if (!process.env.GEMINI_API_KEY) {
+      throw new Error('GEMINI_API_KEY not configured');
+    }
+
+    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+
+    const prompt = `You are a job application analyzer. Compare this resume with the job description and provide a detailed analysis.
+
+RESUME:
+${resumeText}
+
+JOB DESCRIPTION:
+${jobDescription}
+
+Provide your analysis in the following JSON format (respond ONLY with valid JSON, no markdown):
+{
+  "matchScore": <number 0-100>,
+  "matchingSkills": ["skill1", "skill2", ...],
+  "missingSkills": ["skill1", "skill2", ...],
+  "strengths": ["strength1", "strength2", ...],
+  "weaknesses": ["weakness1", "weakness2", ...],
+  "keyRequirements": [
+    {"requirement": "requirement text", "hasIt": true/false}
+  ],
+  "recommendation": "brief recommendation text (1-2 sentences)",
+  "detailedAnalysis": "detailed analysis paragraph"
+}
+
+Be concise but accurate. Focus on technical skills, experience level, and key job requirements.`;
+
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    const text = response.text();
+
+    // Parse JSON response
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      throw new Error('Invalid AI response format');
+    }
+
+    const analysis = JSON.parse(jsonMatch[0]);
+    return analysis;
+
+  } catch (error) {
+    debugError('❌ Gemini AI error:', error);
+    throw new Error(`AI analysis failed: ${error.message}`);
+  }
+}
 
 // ==================== ROUTES ====================
 
@@ -393,6 +481,215 @@ app.get('/api/stats', validateUserId, async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// ==================== RESUME MANAGEMENT ROUTES ====================
+
+// Upload/Add Resume
+app.post('/api/users/:userId/resumes', validateUserId, async (req, res) => {
+  try {
+    const { name, text, fileName } = req.body;
+
+    if (!name || !text) {
+      return res.status(400).json({
+        success: false,
+        message: 'Resume name and text are required'
+      });
+    }
+
+    let user = await User.findOne({ userId: req.userId });
+
+    if (!user) {
+      user = new User({ userId: req.userId, resumes: [] });
+    }
+
+    // If this is the first resume, make it active
+    const isFirstResume = user.resumes.length === 0;
+
+    const newResume = {
+      id: `resume_${Date.now()}`,
+      name: name.trim(),
+      text: text.trim(),
+      fileName: fileName || null,
+      isActive: isFirstResume,
+      uploadedAt: new Date(),
+      updatedAt: new Date()
+    };
+
+    user.resumes.push(newResume);
+    await user.save();
+
+    res.status(201).json({
+      success: true,
+      message: 'Resume uploaded successfully',
+      data: newResume
+    });
+  } catch (error) {
+    debugError('❌ Error uploading resume:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Get User's Resumes
+app.get('/api/users/:userId/resumes', validateUserId, async (req, res) => {
+  try {
+    const user = await User.findOne({ userId: req.userId });
+
+    if (!user || user.resumes.length === 0) {
+      return res.json({
+        success: true,
+        data: { resumes: [], activeResume: null }
+      });
+    }
+
+    const activeResume = user.resumes.find(r => r.isActive);
+
+    res.json({
+      success: true,
+      data: {
+        resumes: user.resumes,
+        activeResume: activeResume || null
+      }
+    });
+  } catch (error) {
+    debugError('❌ Error fetching resumes:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Set Active Resume
+app.put('/api/users/:userId/resumes/:resumeId/active', validateUserId, async (req, res) => {
+  try {
+    const user = await User.findOne({ userId: req.userId });
+
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    // Set all resumes to inactive
+    user.resumes.forEach(r => r.isActive = false);
+
+    // Set selected resume to active
+    const resume = user.resumes.find(r => r.id === req.params.resumeId);
+    if (!resume) {
+      return res.status(404).json({ success: false, message: 'Resume not found' });
+    }
+
+    resume.isActive = true;
+    await user.save();
+
+    res.json({ success: true, message: 'Active resume updated', data: resume });
+  } catch (error) {
+    debugError('❌ Error setting active resume:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Delete Resume
+app.delete('/api/users/:userId/resumes/:resumeId', validateUserId, async (req, res) => {
+  try {
+    const user = await User.findOne({ userId: req.userId });
+
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    const resumeIndex = user.resumes.findIndex(r => r.id === req.params.resumeId);
+    if (resumeIndex === -1) {
+      return res.status(404).json({ success: false, message: 'Resume not found' });
+    }
+
+    const wasActive = user.resumes[resumeIndex].isActive;
+    user.resumes.splice(resumeIndex, 1);
+
+    // If deleted resume was active, make first resume active
+    if (wasActive && user.resumes.length > 0) {
+      user.resumes[0].isActive = true;
+    }
+
+    await user.save();
+
+    res.json({ success: true, message: 'Resume deleted' });
+  } catch (error) {
+    debugError('❌ Error deleting resume:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// ==================== AI ANALYSIS ROUTES ====================
+
+// Analyze Job with AI
+app.post('/api/ai/analyze', validateUserId, async (req, res) => {
+  try {
+    const { jobDescription, jobId } = req.body;
+
+    if (!jobDescription) {
+      return res.status(400).json({
+        success: false,
+        message: 'Job description is required'
+      });
+    }
+
+    // Get user's active resume
+    const user = await User.findOne({ userId: req.userId });
+
+    if (!user || user.resumes.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please upload a resume first',
+        needsResume: true
+      });
+    }
+
+    const activeResume = user.resumes.find(r => r.isActive);
+    if (!activeResume) {
+      return res.status(400).json({
+        success: false,
+        message: 'No active resume set',
+        needsResume: true
+      });
+    }
+
+    // Call Gemini AI for analysis
+    debugLog('🤖 Analyzing job with AI...');
+    const analysis = await analyzeJobWithAI(jobDescription, activeResume.text);
+
+    // If jobId provided, save analysis to job record
+    if (jobId) {
+      try {
+        await JobApplication.findOneAndUpdate(
+          { _id: jobId, userId: req.userId },
+          {
+            aiAnalysis: {
+              ...analysis,
+              resumeUsed: activeResume.id,
+              resumeName: activeResume.name,
+              analyzedAt: new Date()
+            }
+          }
+        );
+        debugLog('✅ Analysis saved to job record');
+      } catch (err) {
+        debugWarn('⚠️ Could not save analysis to job:', err.message);
+      }
+    }
+
+    res.json({
+      success: true,
+      data: {
+        ...analysis,
+        resumeUsed: activeResume.name
+      }
+    });
+
+  } catch (error) {
+    debugError('❌ Error in AI analysis:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'AI analysis failed',
+      error: error.toString()
+    });
   }
 });
 
