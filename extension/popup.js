@@ -597,15 +597,61 @@ async function checkLinkedInPage(userId) {
         const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
 
         if (tab && tab.url && tab.url.includes('linkedin.com/jobs/view')) {
-            debugLog('✅ On LinkedIn job page, showing Compare button');
-            const compareBtn = document.getElementById('compareBtn');
-            if (compareBtn) {
-                compareBtn.style.display = 'block';
-                compareBtn.addEventListener('click', () => handleCompareClick(userId, tab.id));
-            }
+            debugLog('✅ On LinkedIn job page, auto-triggering AI comparison');
+
+            // Auto-trigger AI comparison instead of showing Compare button
+            await autoCompareWithResume(userId, tab.id);
         }
     } catch (error) {
         debugError('Error checking LinkedIn page:', error);
+    }
+}
+
+async function autoCompareWithResume(userId, tabId) {
+    const statsSection = document.getElementById('statsOrAnalysis');
+    const AI = window.JobTrackerConstants.AI_TEXT;
+
+    try {
+        // Show loading state
+        statsSection.innerHTML = `
+            <div style="padding: 20px;">
+                <div class="spinner" style="border: 3px solid #f3f3f3; border-top: 3px solid #667eea; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 0 auto 12px;"></div>
+                <div style="color: #666; font-size: 14px;">${AI.ANALYZING_MESSAGE}</div>
+            </div>
+        `;
+
+        // Get job description from content script
+        const response = await chrome.tabs.sendMessage(tabId, { action: 'getJobDescription' });
+
+        if (!response || !response.description) {
+            throw new Error(AI.ERROR_NO_DESCRIPTION);
+        }
+
+        debugLog('📄 Job description extracted, calling AI API...');
+
+        // Call AI analysis API
+        const analysis = await analyzeJobWithAI(userId, response.description);
+
+        // Display results
+        displayAIAnalysis(analysis);
+
+    } catch (error) {
+        debugError('Error in auto AI comparison:', error);
+
+        // Show helpful error message
+        statsSection.innerHTML = `
+            <div style="padding: 16px; text-align: center;">
+                <div style="font-size: 32px; margin-bottom: 12px;">⚠️</div>
+                <div style="color: #dc3545; font-size: 14px; font-weight: 500; margin-bottom: 8px;">
+                    ${AI.ERROR_ANALYSIS_FAILED}
+                </div>
+                <div style="color: #666; font-size: 12px; line-height: 1.5;">
+                    ${error.message.includes('resume') ?
+                        AI.ERROR_UPLOAD_RESUME_FIRST :
+                        error.message || AI.ERROR_NOT_LINKEDIN}
+                </div>
+            </div>
+        `;
     }
 }
 

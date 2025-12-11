@@ -1,4 +1,4 @@
-const DEBUG_LOGGING = false;
+const DEBUG_LOGGING = true;
 const debugLog = (...args) => { if (DEBUG_LOGGING) console.log(...args); };
 const debugError = (...args) => { if (DEBUG_LOGGING) console.error(...args); };
 const debugWarn = (...args) => { if (DEBUG_LOGGING) console.warn(...args); };
@@ -135,12 +135,9 @@ class LinkedInJobExtractor {
     };
     
     retryAddButton();
-    
+
     // Set up observers for dynamic content
     this.observeJobSelection();
-    
-    // Initial data extraction
-    setTimeout(() => this.extractJobData(), 500);
   }
 
   addExtractButton() {
@@ -534,6 +531,13 @@ class LinkedInJobExtractor {
     const pageText = (document.body.textContent || '').toLowerCase();
     const position = this.extractJobposition().toLowerCase();
 
+    const desc = document.querySelector('.jobs-description-content__text') || 
+             document.querySelector('.jobs-box__html-content') ||
+             document.querySelector('.jobs-description__content');
+
+    console.log('Job description element found:', desc);
+    console.log('Job description text:', desc?.innerText?.substring(0, 500) + '...');
+
     // ========== WORK ARRANGEMENT (from page text) ==========
     if (result.workArrangement === constants.WORK_ARRANGEMENTS.NOT_SPECIFIED) {
       for (const [arrangementKey, synonyms] of Object.entries(constants.WORK_ARRANGEMENT_SYNONYMS || {})) {
@@ -764,10 +768,8 @@ class LinkedInJobExtractor {
         if (saveButton && !existingButton && this.userId) {
           debugLog('➕ Adding button to new job...');
           this.addExtractButton();
-          this.extractJobData();
         } 
         debugLog('🔄 Refreshing job snapshot...');
-        this.extractJobData();
 
         
         if (existingButton && !saveButton) {
