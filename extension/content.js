@@ -825,23 +825,45 @@ const waitForConstants = async () => {
 // Listen for messages from popup
 chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
   debugLog('Message received:', request);
-  
+
   if (request.action === 'getCurrentJob') {
     const jobData = window.jobExtractor ? window.jobExtractor.extractJobData() : null;
     sendResponse({jobData: jobData});
+  } else if (request.action === 'getJobDescription') {
+    // Extract job description for AI analysis (using same selectors as extractKeywords)
+    try {
+      const descriptionElement = document.querySelector('.jobs-description-content__text') ||
+                                 document.querySelector('.jobs-box__html-content') ||
+                                 document.querySelector('.jobs-description__content') ||
+                                 document.querySelector('[class*="job-details"]');
+
+      if (descriptionElement) {
+        const description = descriptionElement.innerText || descriptionElement.textContent;
+        debugLog('📄 Job description extracted:', description.substring(0, 100) + '...');
+        sendResponse({ success: true, description: description.trim() });
+      } else {
+        debugError('❌ Could not find job description element');
+        sendResponse({ success: false, description: null });
+      }
+    } catch (error) {
+      debugError('Error extracting job description:', error);
+      sendResponse({ success: false, description: null });
+    }
   } else if (request.action === 'logDebugData') {
     debugLog('%c=== JOB TRACKER DEBUG ===', 'color: blue; font-size: 16px; font-weight: bold;');
     debugLog('User ID:', window.jobExtractor?.userId);
     debugLog('Current Job Data:', window.jobExtractor?.extractJobData());
-    
+
     chrome.storage.local.get(['savedJobs', 'userId'], (result) => {
       debugLog('Storage User ID:', result.userId);
       debugLog('Stored Jobs:', result.savedJobs);
       debugLog('Total Jobs:', result.savedJobs?.length || 0);
     });
-    
+
     sendResponse({success: true});
   }
+
+  return true; // Keep message channel open for async response
 });
 
 debugLog('Job Tracker content script loaded successfully');
