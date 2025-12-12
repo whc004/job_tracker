@@ -285,9 +285,15 @@ async function analyzeJobWithAI(jobDescription, resumeText) {
       throw new Error('GEMINI_API_KEY not configured');
     }
 
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    // Configure model to force JSON output - no more parsing needed!
+    const model = genAI.getGenerativeModel({
+      model: 'gemini-1.5-pro',
+      generationConfig: {
+        responseMimeType: 'application/json'
+      }
+    });
 
-    const prompt = `You are a job application analyzer. Compare this resume with the job description and provide a detailed analysis.
+    const prompt = `You are an expert technical recruiter. Analyze the Resume against the Job Description.
 
 RESUME:
 ${resumeText}
@@ -295,33 +301,45 @@ ${resumeText}
 JOB DESCRIPTION:
 ${jobDescription}
 
-Provide your analysis in the following JSON format (respond ONLY with valid JSON, no markdown):
-{
-  "matchScore": <number 0-100>,
-  "matchingSkills": ["skill1", "skill2", ...],
-  "missingSkills": ["skill1", "skill2", ...],
-  "strengths": ["strength1", "strength2", ...],
-  "weaknesses": ["weakness1", "weakness2", ...],
-  "keyRequirements": [
-    {"requirement": "requirement text", "hasIt": true/false}
-  ],
-  "recommendation": "brief recommendation text (1-2 sentences)",
-  "detailedAnalysis": "detailed analysis paragraph"
-}
+Output a JSON object with this exact schema:
 
-Be concise but accurate. Focus on technical skills, experience level, and key job requirements.`;
+IMPORTANT CONSTRAINTS:
+- Keep all descriptions SHORT (under 10 words) for mobile UI
+- Focus on technical skills and concrete requirements
+- Use exact terms from the job description
+
+{
+  "matchScore": number, // 0-100, weighted: skills(40%) + experience(30%) + requirements(30%)
+  "headline": string, // 3-5 word summary (e.g., "Strong Match: Python & AWS")
+  "matchingSkills": string[], // Technical skills found in BOTH resume and JD
+  "missingSkills": string[], // Technical skills in JD but NOT in resume
+  "minimumRequirements": [
+    // Critical "must-have" requirements (citizenship, degree, years exp, etc.)
+    { "requirement": string, "met": boolean, "details": string }
+  ],
+  "strengths": string[], // 3-4 bullet points where candidate excels (max 10 words each)
+  "weaknesses": string[], // 2-3 bullet points where candidate falls short (max 10 words each)
+  "quickFixes": string[], // 3 actionable resume tailoring tips (max 10 words each)
+  "recommendation": string, // 1-2 sentences: "Strong match" or "Partial match" etc.
+  "detailedAnalysis": string // 2-3 sentences explaining overall fit
+}`;
 
     const result = await model.generateContent(prompt);
     const response = await result.response;
     const text = response.text();
 
-    // Parse JSON response
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      throw new Error('Invalid AI response format');
+    // Parse JSON response - guaranteed to be valid JSON with responseMimeType
+    const analysis = JSON.parse(text);
+
+    // Ensure backward compatibility with existing UI (keyRequirements)
+    // Map minimumRequirements to keyRequirements format
+    if (analysis.minimumRequirements) {
+      analysis.keyRequirements = analysis.minimumRequirements.map(req => ({
+        requirement: req.requirement,
+        hasIt: req.met
+      }));
     }
 
-    const analysis = JSON.parse(jsonMatch[0]);
     return analysis;
 
   } catch (error) {
