@@ -849,12 +849,6 @@ class LinkedInJobExtractor {
     const existing = document.getElementById('ai-analysis-modal');
     if (existing) existing.remove();
 
-    // Determine colors based on score
-    const score = data.matchScore || 0;
-    let scoreColor = '#ef4444'; // Red
-    if (score >= 60) scoreColor = '#f59e0b'; // Orange
-    if (score >= 80) scoreColor = '#10b981'; // Green
-
     // Generate Skills HTML
     const matchingHtml = (data.matchingSkills || []).map(skill => 
       `<span class="skill-tag skill-match">✓ ${skill}</span>`
@@ -877,26 +871,6 @@ class LinkedInJobExtractor {
       </div>
 
       <div id="ai-analysis-content">
-        <div class="analysis-grid">
-          <div class="score-card">
-            <div class="score-circle" style="border-color: ${scoreColor}; color: ${scoreColor}; font-size: 24px;">
-              ${score}%
-            </div>
-            <h3 style="margin: 0 0 5px 0; color: white; font-size: 16px;">${data.headline || 'Analysis Complete'}</h3>
-            <p style="margin: 0; font-size: 11px; color: #94a3b8;">Match Score</p>
-          </div>
-
-          <div class="skills-card">
-            <div class="section-title">Skills Breakdown</div>
-            <div style="margin-bottom: 10px;">
-              ${matchingHtml || '<span style="color:#666; font-size:12px">No direct matches found</span>'}
-            </div>
-            <div>
-              ${missingHtml}
-            </div>
-          </div>
-        </div>
-
         ${data.minimumRequirements && data.minimumRequirements.length > 0 ? `
           <div style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.2); border-radius: 12px; padding: 20px; margin-bottom: 20px;">
             <div class="section-title" style="color: #fca5a5;">⚡ Minimum Requirements</div>
@@ -911,6 +885,16 @@ class LinkedInJobExtractor {
             </ul>
           </div>
         ` : ''}
+
+        <div style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 20px; margin-bottom: 20px;">
+          <div class="section-title">📊 Skills Breakdown</div>
+          <div style="margin-bottom: 10px;">
+            ${matchingHtml || '<span style="color:#666; font-size:12px">No direct matches found</span>'}
+          </div>
+          <div>
+            ${missingHtml}
+          </div>
+        </div>
 
         ${data.recommendedRequirements && data.recommendedRequirements.length > 0 ? `
           <div style="background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.2); border-radius: 12px; padding: 20px; margin-bottom: 20px;">
