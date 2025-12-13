@@ -315,6 +315,11 @@ Return JSON with this structure:
 Output ONLY the JSON:`;
 
     debugLog('📝 Prompt length:', prompt.length, 'characters');
+    debugLog('='.repeat(80));
+    debugLog('📤 FULL PROMPT SENT TO GEMINI:');
+    debugLog('='.repeat(80));
+    debugLog(prompt);
+    debugLog('='.repeat(80));
     debugLog('📤 Sending request to Gemini...');
 
     const controller = new AbortController();
@@ -344,11 +349,16 @@ Output ONLY the JSON:`;
     }
 
     const data = await response.json();
-    debugLog('✅ Gemini response received:', JSON.stringify(data).substring(0, 200));
+    debugLog('='.repeat(80));
+    debugLog('✅ GEMINI RESPONSE RECEIVED:');
+    debugLog('='.repeat(80));
+    debugLog(JSON.stringify(data, null, 2));
+    debugLog('='.repeat(80));
 
     // Extract text from Gemini response
     let text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-    debugLog('📝 Raw text from Gemini:', text.substring(0, 300));
+    debugLog('📝 EXTRACTED TEXT FROM GEMINI:');
+    debugLog(text);
 
     if (!text) {
       throw new Error('No text in Gemini response');
