@@ -287,7 +287,7 @@ async function analyzeJobWithAI(jobDescription, resumeText) {
 
     // Configure model to force JSON output - no more parsing needed!
     const model = genAI.getGenerativeModel({
-      model: 'gemini-1.5-pro-latest',
+      model: 'gemini-pro',
       generationConfig: {
         responseMimeType: 'application/json'
       }
