@@ -19,7 +19,6 @@ const dotenv = require('dotenv');
 const multer = require('multer');
 const csvParser = require('csv-parser');
 const fs = require('fs');
-const { GoogleGenerativeAI } = require('@google/generative-ai');
 
 dotenv.config();
 
@@ -276,8 +275,7 @@ const userSchema = new mongoose.Schema({
 const User = mongoose.model('User', userSchema);
 const upload = multer({ dest: '../uploads/' });
 
-// ==================== GEMINI AI SETUP ====================
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
+// ==================== GEMINI AI SETUP (Direct REST API) ====================
 
 async function analyzeJobWithAI(jobDescription, resumeText) {
   try {
@@ -285,10 +283,13 @@ async function analyzeJobWithAI(jobDescription, resumeText) {
       throw new Error('GEMINI_API_KEY not configured');
     }
 
-    // Use gemini-1.5-flash model (faster and widely available)
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    const API_KEY = process.env.GEMINI_API_KEY;
+    // Try v1 API (NOT v1beta) with gemini-pro model
+    const API_URL = `https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key=${API_KEY}`;
 
-    const prompt = `You are an expert technical recruiter analyzing a resume against a job description.
+    debugLog('🤖 Calling Gemini API with v1 endpoint...');
+
+    const prompt = `You are an expert technical recruiter. Analyze this resume against the job description and respond with ONLY valid JSON (no markdown).
 
 RESUME:
 ${resumeText}
@@ -296,38 +297,67 @@ ${resumeText}
 JOB DESCRIPTION:
 ${jobDescription}
 
-Provide your analysis in VALID JSON format only (no markdown, no code blocks). Keep all text under 10 words for mobile UI.
-
+Return JSON with this structure:
 {
   "matchScore": 85,
-  "headline": "Strong Python & Cloud Match",
-  "matchingSkills": ["Python", "AWS", "Docker"],
-  "missingSkills": ["Kubernetes", "Go"],
-  "minimumRequirements": [
-    { "requirement": "Bachelor's degree", "met": true, "details": "Has CS degree" },
-    { "requirement": "3+ years experience", "met": false, "details": "Only 2 years" }
-  ],
-  "strengths": ["Strong Python skills", "AWS certified"],
-  "weaknesses": ["Limited DevOps experience"],
-  "quickFixes": ["Add Kubernetes projects", "Highlight cloud work"],
-  "recommendation": "Strong match for mid-level position",
-  "detailedAnalysis": "Candidate has core skills but needs more DevOps experience"
+  "headline": "Strong Match",
+  "matchingSkills": ["skill1"],
+  "missingSkills": ["skill2"],
+  "minimumRequirements": [{"requirement": "text", "met": true, "details": "why"}],
+  "strengths": ["point1"],
+  "weaknesses": ["point2"],
+  "quickFixes": ["tip1"],
+  "recommendation": "text",
+  "detailedAnalysis": "text"
 }
 
-Output ONLY valid JSON:`;
+Output ONLY the JSON:`;
 
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-    let text = response.text().trim();
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 60000); // 60 second timeout
+
+    const response = await fetch(API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        contents: [{
+          parts: [{
+            text: prompt
+          }]
+        }]
+      }),
+      signal: controller.timeout
+    });
+
+    clearTimeout(timeout);
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      debugError(`❌ Gemini API error (${response.status}):`, errorText);
+      throw new Error(`Gemini API returned ${response.status}: ${errorText.substring(0, 200)}`);
+    }
+
+    const data = await response.json();
+    debugLog('✅ Gemini response received:', JSON.stringify(data).substring(0, 200));
+
+    // Extract text from Gemini response
+    let text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    debugLog('📝 Raw text from Gemini:', text.substring(0, 300));
+
+    if (!text) {
+      throw new Error('No text in Gemini response');
+    }
 
     // Remove markdown code blocks if present
     text = text.replace(/^```json\s*/i, '').replace(/^```\s*/,'').replace(/```\s*$/,'').trim();
 
     // Parse JSON response
     const analysis = JSON.parse(text);
+    debugLog('✅ Parsed analysis successfully');
 
     // Ensure backward compatibility with existing UI (keyRequirements)
-    // Map minimumRequirements to keyRequirements format
     if (analysis.minimumRequirements) {
       analysis.keyRequirements = analysis.minimumRequirements.map(req => ({
         requirement: req.requirement,
@@ -338,7 +368,8 @@ Output ONLY valid JSON:`;
     return analysis;
 
   } catch (error) {
-    debugError('❌ Gemini AI error:', error);
+    debugError('❌ Gemini AI error:', error.message);
+    debugError('Full error:', error);
     throw new Error(`AI analysis failed: ${error.message}`);
   }
 }
