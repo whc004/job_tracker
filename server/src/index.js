@@ -284,8 +284,8 @@ async function analyzeJobWithAI(jobDescription, resumeText) {
     }
 
     const API_KEY = process.env.GEMINI_API_KEY;
-    // Try v1 API (NOT v1beta) with gemini-pro model
-    const API_URL = `https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key=${API_KEY}`;
+    // Use v1beta API with gemini-1.5-flash (recommended by Google AI Studio)
+    const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`;
 
     debugLog('🤖 Calling Gemini API...');
     debugLog('📡 API Endpoint:', API_URL.replace(API_KEY, '[API_KEY]'));
