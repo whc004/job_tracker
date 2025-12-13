@@ -837,13 +837,31 @@ async function checkLinkedInPage(userId) {
         );
 
         if (isJobPage) {
-            debugLog('✅ On LinkedIn job page, auto-triggering AI comparison');
+            debugLog('✅ On LinkedIn job page, showing Match button');
 
-            // Wait a bit for content script to initialize
-            await new Promise(resolve => setTimeout(resolve, 500));
+            // Show Match button instead of auto-triggering
+            const compareBtn = document.getElementById('compareBtn');
+            const statsSection = document.getElementById('statsOrAnalysis');
 
-            // Auto-trigger AI comparison instead of showing Compare button
-            await autoCompareWithResume(userId, tab.id);
+            if (compareBtn) {
+                compareBtn.style.display = 'block';
+                compareBtn.onclick = async () => {
+                    debugLog('🤖 User clicked Match button');
+                    await autoCompareWithResume(userId, tab.id);
+                };
+            }
+
+            // Show placeholder in stats section
+            if (statsSection) {
+                statsSection.style.display = 'block';
+                statsSection.innerHTML = `
+                    <div style="padding: 20px; text-align: center;">
+                        <div style="font-size: 36px; margin-bottom: 12px;">🎯</div>
+                        <div style="color: #666; font-size: 14px; margin-bottom: 8px;">Ready to analyze</div>
+                        <div style="color: #999; font-size: 12px;">Click "🤖 Match" to compare your resume</div>
+                    </div>
+                `;
+            }
         }
     } catch (error) {
         debugError('Error checking LinkedIn page:', error);
