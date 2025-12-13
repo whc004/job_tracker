@@ -1,7 +1,7 @@
-const DEBUG_LOGGING = false;
-const debugLog = (...args) => { if (DEBUG_LOGGING) console.log(...args); };
-const debugError = (...args) => { if (DEBUG_LOGGING) console.error(...args); };
-const debugWarn = (...args) => { if (DEBUG_LOGGING) console.warn(...args); };
+const DEBUG_LOGGING = true;
+const debugLog = (...args) => { if (DEBUG_LOGGING) console.log('[POPUP]', ...args); };
+const debugError = (...args) => { if (DEBUG_LOGGING) console.error('[POPUP]', ...args); };
+const debugWarn = (...args) => { if (DEBUG_LOGGING) console.warn('[POPUP]', ...args); };
 
 // ========================================
 // INITIALIZATION
@@ -181,11 +181,20 @@ async function showMainInterface(userId) {
                 <button id="changeUserIdBtn" style="float: right; background: none; border: none; color: #1976d2; cursor: pointer; font-size: 10px; text-decoration: underline;">Change</button>
             </div>
 
-            <div id="statsOrAnalysis" style="background: white; padding: 16px; border-radius: 6px; margin-bottom: 16px; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-                <div style="font-size: 32px; font-weight: bold; color: #0073b1;" id="jobCount">
-                    <div class="spinner" style="border: 3px solid #f3f3f3; border-top: 3px solid #0073b1; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; margin: 0 auto;"></div>
+            <div id="resumeSelector" style="background: white; padding: 16px; border-radius: 6px; margin-bottom: 16px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                    <div style="font-size: 12px; font-weight: 600; color: #666;">📄 Current Resume</div>
+                    <button id="changeResumeBtn" style="background: none; border: none; color: #667eea; cursor: pointer; font-size: 11px; text-decoration: underline; padding: 0;">
+                        Change
+                    </button>
                 </div>
-                <div style="color: #666; font-size: 14px;">${window.JobTrackerConstants.AI_TEXT.JOBS_SAVED}</div>
+                <div id="currentResumeName" style="font-size: 14px; font-weight: 500; color: #0073b1;">
+                    <div class="spinner" style="border: 3px solid #f3f3f3; border-top: 3px solid #0073b1; border-radius: 50%; width: 20px; height: 20px; animation: spin 1s linear infinite; display: inline-block;"></div>
+                </div>
+                <div id="resumeUploadedAt" style="font-size: 11px; color: #999; margin-top: 4px;"></div>
+            </div>
+
+            <div id="statsOrAnalysis" style="background: white; padding: 16px; border-radius: 6px; margin-bottom: 16px; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); display: none;">
             </div>
 
             <button id="compareBtn" style="width: 100%; padding: 12px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 500; margin-bottom: 12px; display: none;">
@@ -235,15 +244,18 @@ async function showMainInterface(userId) {
 // ========================================
 async function syncWithServer(userId) {
     debugLog('🔄 Syncing with server for user:', userId);
-    
+
     try {
+        // Fetch resumes and display current resume
+        await fetchAndDisplayResumes(userId);
+
         // Fetch stats from server
         const stats = await fetchJobStats(userId);
         debugLog('📊 Stats received:', stats);
-        
+
         // Update last sync time
         updateLastSyncTime();
-        
+
         if (stats.total === 0) {
             // New user - show instructions
             renderInstructions();
@@ -254,7 +266,7 @@ async function syncWithServer(userId) {
             debugLog('✅ Recent jobs received:', recentJobs.length, 'jobs');
             renderRecentJobs(stats.total, recentJobs, userId);
         }
-        
+
     } catch (error) {
         debugError('❌ Error syncing with server:', error);
         renderError(userId);
@@ -265,12 +277,222 @@ function updateLastSyncTime() {
     const lastSyncElement = document.getElementById('lastSync');
     if (lastSyncElement) {
         const now = new Date();
-        const timeStr = now.toLocaleTimeString('en-US', { 
-            hour: '2-digit', 
+        const timeStr = now.toLocaleTimeString('en-US', {
+            hour: '2-digit',
             minute: '2-digit',
             second: '2-digit'
         });
         lastSyncElement.textContent = `Last synced: ${timeStr}`;
+    }
+}
+
+// ========================================
+// RESUME MANAGEMENT FUNCTIONS
+// ========================================
+
+async function fetchAndDisplayResumes(userId) {
+    try {
+        debugLog('📄 Fetching user resumes...');
+
+        const response = await fetch(`${'https://jobtracker-production-2ed3.up.railway.app/api'}/users/${userId}/resumes`, {
+            method: 'GET',
+            headers: {
+                'x-user-id': userId,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            const { resumes, activeResume } = result.data;
+            debugLog('✅ Resumes received:', resumes.length, 'resumes');
+            displayCurrentResume(activeResume, resumes, userId);
+        } else {
+            throw new Error(result.message || 'Failed to fetch resumes');
+        }
+    } catch (error) {
+        debugError('❌ Error fetching resumes:', error);
+        displayNoResume(userId);
+    }
+}
+
+function displayCurrentResume(activeResume, allResumes, userId) {
+    const resumeNameEl = document.getElementById('currentResumeName');
+    const uploadedAtEl = document.getElementById('resumeUploadedAt');
+    const changeBtn = document.getElementById('changeResumeBtn');
+
+    if (!activeResume || allResumes.length === 0) {
+        displayNoResume(userId);
+        return;
+    }
+
+    // Display active resume name
+    resumeNameEl.textContent = activeResume.name;
+
+    // Display upload date
+    const uploadDate = new Date(activeResume.uploadedAt);
+    const timeAgo = getTimeAgo(uploadDate);
+    uploadedAtEl.textContent = `Uploaded ${timeAgo}`;
+
+    // Handle "Change" button click
+    if (changeBtn) {
+        changeBtn.onclick = () => showResumeSelector(allResumes, userId);
+    }
+}
+
+function displayNoResume(userId) {
+    const resumeNameEl = document.getElementById('currentResumeName');
+    const uploadedAtEl = document.getElementById('resumeUploadedAt');
+    const changeBtn = document.getElementById('changeResumeBtn');
+
+    resumeNameEl.innerHTML = '<span style="color: #dc3545;">No resume uploaded</span>';
+    uploadedAtEl.textContent = 'Upload resume in dashboard to use AI features';
+
+    if (changeBtn) {
+        changeBtn.textContent = 'Upload';
+        changeBtn.onclick = () => {
+            const dashboardUrl = `${'https://job-tracker-gamma-three.vercel.app'}?userId=${userId}`;
+            chrome.tabs.create({ url: dashboardUrl });
+            window.close();
+        };
+    }
+}
+
+function showResumeSelector(resumes, userId) {
+    const resumeSelector = document.getElementById('resumeSelector');
+
+    resumeSelector.innerHTML = `
+        <div style="margin-bottom: 12px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                <div style="font-size: 12px; font-weight: 600; color: #666;">📄 Select Resume</div>
+                <button id="cancelSelectBtn" style="background: none; border: none; color: #999; cursor: pointer; font-size: 11px; padding: 0;">
+                    ✕
+                </button>
+            </div>
+            <div id="resumeList" style="max-height: 200px; overflow-y: auto;"></div>
+        </div>
+        <div style="text-align: center; padding-top: 12px; border-top: 1px solid #e0e0e0;">
+            <button id="uploadNewResumeBtn" style="background: none; border: none; color: #667eea; cursor: pointer; font-size: 12px; text-decoration: underline;">
+                + Upload new resume in dashboard
+            </button>
+        </div>
+    `;
+
+    // Render resume list
+    const resumeList = document.getElementById('resumeList');
+    resumes.forEach(resume => {
+        const resumeItem = document.createElement('div');
+        resumeItem.style.cssText = 'padding: 12px; margin-bottom: 8px; border: 1px solid #e0e0e0; border-radius: 6px; cursor: pointer; transition: all 0.2s;';
+
+        if (resume.isActive) {
+            resumeItem.style.background = '#e3f2fd';
+            resumeItem.style.borderColor = '#667eea';
+        }
+
+        const uploadDate = new Date(resume.uploadedAt);
+        const timeAgo = getTimeAgo(uploadDate);
+
+        resumeItem.innerHTML = `
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <div style="font-size: 13px; font-weight: 500; color: #333; margin-bottom: 4px;">
+                        ${resume.isActive ? '✓ ' : ''}${resume.name}
+                    </div>
+                    <div style="font-size: 11px; color: #999;">
+                        Uploaded ${timeAgo}
+                    </div>
+                </div>
+            </div>
+        `;
+
+        // Hover effect
+        resumeItem.addEventListener('mouseenter', () => {
+            if (!resume.isActive) {
+                resumeItem.style.background = '#f8f9fa';
+            }
+        });
+
+        resumeItem.addEventListener('mouseleave', () => {
+            if (!resume.isActive) {
+                resumeItem.style.background = 'white';
+            }
+        });
+
+        // Click to select
+        resumeItem.addEventListener('click', async () => {
+            if (!resume.isActive) {
+                await setActiveResume(userId, resume.id);
+            }
+        });
+
+        resumeList.appendChild(resumeItem);
+    });
+
+    // Cancel button
+    const cancelBtn = document.getElementById('cancelSelectBtn');
+    if (cancelBtn) {
+        cancelBtn.onclick = async () => {
+            await fetchAndDisplayResumes(userId);
+        };
+    }
+
+    // Upload new resume button
+    const uploadBtn = document.getElementById('uploadNewResumeBtn');
+    if (uploadBtn) {
+        uploadBtn.onclick = () => {
+            const dashboardUrl = `${'https://job-tracker-gamma-three.vercel.app'}?userId=${userId}`;
+            chrome.tabs.create({ url: dashboardUrl });
+            window.close();
+        };
+    }
+}
+
+async function setActiveResume(userId, resumeId) {
+    try {
+        debugLog('🔄 Setting active resume:', resumeId);
+
+        const resumeSelector = document.getElementById('resumeSelector');
+        resumeSelector.innerHTML = `
+            <div style="text-align: center; padding: 20px;">
+                <div class="spinner" style="border: 3px solid #f3f3f3; border-top: 3px solid #667eea; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; margin: 0 auto 12px;"></div>
+                <div style="font-size: 12px; color: #666;">Switching resume...</div>
+            </div>
+        `;
+
+        const response = await fetch(`${'https://jobtracker-production-2ed3.up.railway.app/api'}/users/${userId}/resumes/${resumeId}/active`, {
+            method: 'PUT',
+            headers: {
+                'x-user-id': userId,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            debugLog('✅ Active resume updated');
+            // Refresh resume display
+            await fetchAndDisplayResumes(userId);
+
+            // If on LinkedIn job page, re-trigger AI analysis with new resume
+            const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+            const isJobPage = tab && tab.url && (
+                tab.url.includes('linkedin.com/jobs/view') ||
+                tab.url.includes('currentJobId=')
+            );
+
+            if (isJobPage) {
+                debugLog('🔄 Re-triggering AI analysis with new resume...');
+                await autoCompareWithResume(userId, tab.id);
+            }
+        } else {
+            throw new Error(result.message || 'Failed to set active resume');
+        }
+    } catch (error) {
+        debugError('❌ Error setting active resume:', error);
+        alert('Failed to switch resume. Please try again.');
+        await fetchAndDisplayResumes(userId);
     }
 }
 
@@ -301,7 +523,7 @@ function setupEventListeners(userId) {
         });
     }
     
-    // ⭐ NEW: Refresh button
+    // Refresh button
     const refreshBtn = document.getElementById('refreshBtn');
     if (refreshBtn) {
         refreshBtn.addEventListener('click', async function() {
@@ -596,8 +818,17 @@ async function checkLinkedInPage(userId) {
     try {
         const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
 
-        if (tab && tab.url && tab.url.includes('linkedin.com/jobs/view')) {
+        // Check if on LinkedIn job page (either direct view or search results with selected job)
+        const isJobPage = tab && tab.url && (
+            tab.url.includes('linkedin.com/jobs/view') ||
+            tab.url.includes('currentJobId=')
+        );
+
+        if (isJobPage) {
             debugLog('✅ On LinkedIn job page, auto-triggering AI comparison');
+
+            // Wait a bit for content script to initialize
+            await new Promise(resolve => setTimeout(resolve, 500));
 
             // Auto-trigger AI comparison instead of showing Compare button
             await autoCompareWithResume(userId, tab.id);
@@ -612,7 +843,8 @@ async function autoCompareWithResume(userId, tabId) {
     const AI = window.JobTrackerConstants.AI_TEXT;
 
     try {
-        // Show loading state
+        // Show and display loading state
+        statsSection.style.display = 'block';
         statsSection.innerHTML = `
             <div style="padding: 20px;">
                 <div class="spinner" style="border: 3px solid #f3f3f3; border-top: 3px solid #667eea; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 0 auto 12px;"></div>
@@ -620,11 +852,60 @@ async function autoCompareWithResume(userId, tabId) {
             </div>
         `;
 
-        // Get job description from content script
-        const response = await chrome.tabs.sendMessage(tabId, { action: 'getJobDescription' });
+        // First, verify content script is ready
+        let contentScriptReady = false;
+        let pingAttempts = 0;
+        const maxPingAttempts = 5;
+
+        while (pingAttempts < maxPingAttempts && !contentScriptReady) {
+            try {
+                pingAttempts++;
+                debugLog(`🏓 Ping attempt ${pingAttempts}...`);
+                const pingResponse = await chrome.tabs.sendMessage(tabId, { action: 'ping' });
+
+                if (pingResponse && pingResponse.ready) {
+                    debugLog('✅ Content script is ready');
+                    contentScriptReady = true;
+                    break;
+                }
+            } catch (err) {
+                debugError(`❌ Ping attempt ${pingAttempts} failed:`, err.message);
+                if (pingAttempts < maxPingAttempts) {
+                    await new Promise(resolve => setTimeout(resolve, 300));
+                }
+            }
+        }
+
+        if (!contentScriptReady) {
+            throw new Error('Content script not responding. Please refresh the LinkedIn page and try again.');
+        }
+
+        // Get job description from content script with retry logic
+        let response = null;
+        let attempts = 0;
+        const maxAttempts = 3;
+
+        while (attempts < maxAttempts && !response) {
+            try {
+                attempts++;
+                debugLog(`📤 Attempt ${attempts} to get job description from content script...`);
+                response = await chrome.tabs.sendMessage(tabId, { action: 'getJobDescription' });
+
+                if (response && response.description) {
+                    debugLog('✅ Job description received from content script');
+                    break;
+                }
+            } catch (err) {
+                debugError(`❌ Attempt ${attempts} failed:`, err.message);
+                if (attempts < maxAttempts) {
+                    // Wait before retry (exponential backoff)
+                    await new Promise(resolve => setTimeout(resolve, attempts * 500));
+                }
+            }
+        }
 
         if (!response || !response.description) {
-            throw new Error(AI.ERROR_NO_DESCRIPTION);
+            throw new Error('Content script not responding. Please refresh the LinkedIn page and try again.');
         }
 
         debugLog('📄 Job description extracted, calling AI API...');
@@ -638,20 +919,44 @@ async function autoCompareWithResume(userId, tabId) {
     } catch (error) {
         debugError('Error in auto AI comparison:', error);
 
+        // Determine if this is a content script connection error
+        const isConnectionError = error.message.includes('Could not establish connection') ||
+                                  error.message.includes('Receiving end does not exist') ||
+                                  error.message.includes('Content script not responding');
+
         // Show helpful error message
         statsSection.innerHTML = `
             <div style="padding: 16px; text-align: center;">
                 <div style="font-size: 32px; margin-bottom: 12px;">⚠️</div>
                 <div style="color: #dc3545; font-size: 14px; font-weight: 500; margin-bottom: 8px;">
-                    ${AI.ERROR_ANALYSIS_FAILED}
+                    ${isConnectionError ? 'Extension Loading' : AI.ERROR_ANALYSIS_FAILED}
                 </div>
-                <div style="color: #666; font-size: 12px; line-height: 1.5;">
-                    ${error.message.includes('resume') ?
-                        AI.ERROR_UPLOAD_RESUME_FIRST :
-                        error.message || AI.ERROR_NOT_LINKEDIN}
+                <div style="color: #666; font-size: 12px; line-height: 1.5; margin-bottom: 12px;">
+                    ${isConnectionError ?
+                        'Please refresh the LinkedIn page and reopen this popup.' :
+                        error.message.includes('resume') ?
+                            AI.ERROR_UPLOAD_RESUME_FIRST :
+                            error.message || AI.ERROR_NOT_LINKEDIN}
                 </div>
+                ${isConnectionError ? `
+                    <button id="refreshPageBtn" style="padding: 8px 16px; background: #0073b1; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">
+                        Refresh Page
+                    </button>
+                ` : ''}
             </div>
         `;
+
+        // Add refresh button handler if needed
+        if (isConnectionError) {
+            const refreshBtn = document.getElementById('refreshPageBtn');
+            if (refreshBtn) {
+                refreshBtn.addEventListener('click', async () => {
+                    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+                    chrome.tabs.reload(tab.id);
+                    window.close();
+                });
+            }
+        }
     }
 }
 
