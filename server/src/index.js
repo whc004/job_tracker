@@ -415,7 +415,8 @@ app.get('/api/test-gemini', async (req, res) => {
 
     // Try different model names to see which works
     const modelsToTest = [
-      'gemini-pro',
+      'gemini-2.5-flash',
+            'gemini-pro',
       'gemini-1.5-flash',
       'gemini-1.5-pro',
       'models/gemini-pro',
