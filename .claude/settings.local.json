@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$(cat <<''EOF''\nFix Gemini model name for v1beta API compatibility\n\n- Changed model from ''gemini-1.5-pro'' to ''gemini-1.5-pro-latest''\n- This model name is compatible with Google''s v1beta API\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>\nEOF\n)\")",
+      "Bash(git push:*)",
+      "Bash(git commit -m \"$(cat <<''EOF''\nAdd resume selector to popup - replace job count display\n\n- Replaced job count with current resume display\n- Added resume switching functionality in popup\n- Users can now see which resume is active\n- Click \"Change\" to select different resume\n- Auto re-triggers AI analysis when resume is switched\n- Shows upload prompt if no resume exists\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>\nEOF\n)\")",
+      "Bash(git commit -m \"$(cat <<''EOF''\nUse gemini-pro model for better API compatibility\n\n- Changed from gemini-1.5-pro-latest to gemini-pro\n- gemini-pro is the stable model name for v1beta API\n- Should resolve 404 model not found errors\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>\nEOF\n)\")",
+      "Bash(curl -s https://jobtracker-production-2ed3.up.railway.app/)"
+    ]
+  }
+}

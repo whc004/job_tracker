@@ -1,7 +1,7 @@
 const DEBUG_LOGGING = true;
-const debugLog = (...args) => { if (DEBUG_LOGGING) console.log(...args); };
-const debugError = (...args) => { if (DEBUG_LOGGING) console.error(...args); };
-const debugWarn = (...args) => { if (DEBUG_LOGGING) console.warn(...args); };
+const debugLog = (...args) => { if (DEBUG_LOGGING) console.log('[CONTENT]', ...args); };
+const debugError = (...args) => { if (DEBUG_LOGGING) console.error('[CONTENT]', ...args); };
+const debugWarn = (...args) => { if (DEBUG_LOGGING) console.warn('[CONTENT]', ...args); };
 
 
 // LinkedIn Job Extractor - Complete Fixed Version
@@ -116,24 +116,25 @@ class LinkedInJobExtractor {
       return;
     }
     
-    // Retry adding button multiple times with increasing delays
+    // Retry adding buttons multiple times with increasing delays
     const retryAddButton = (attempt = 1, maxAttempts = 5) => {
       const delay = attempt * 500; // 500ms, 1000ms, 1500ms, etc.
-      
+
       setTimeout(() => {
-        const success = this.addExtractButton();
-        
-        if (!success && attempt < maxAttempts) {
+        const extractSuccess = this.addExtractButton();
+        const compareSuccess = this.addCompareButton();
+
+        if ((!extractSuccess || !compareSuccess) && attempt < maxAttempts) {
           debugLog(`Button add attempt ${attempt} failed, retrying...`);
           retryAddButton(attempt + 1, maxAttempts);
-        } else if (success) {
-          debugLog('✅ Button successfully added');
+        } else if (extractSuccess && compareSuccess) {
+          debugLog('✅ Both buttons successfully added');
         } else {
-          debugLog('⚠️ Failed to add button after all attempts');
+          debugLog('⚠️ Some buttons failed to add after all attempts');
         }
       }, delay);
     };
-    
+
     retryAddButton();
 
     // Set up observers for dynamic content
@@ -206,6 +207,71 @@ class LinkedInJobExtractor {
     
 
     debugLog('❌ Could not find container for button');
+    return false;
+  }
+
+  addCompareButton() {
+    // Check if button already exists - don't recreate it
+    const existingButton = document.getElementById('job-tracker-compare-btn');
+    if (existingButton) {
+      debugLog('⭐️ Compare button already exists, skipping...');
+      return true; // Button exists, success
+    }
+
+    // Try multiple possible container locations
+    const saveButton = document.querySelector('.jobs-save-button') || document.querySelector('[data-view-name="job-save-button"]');
+    if (!saveButton) {
+      debugLog('⚠️ Save button not found for compare button, will retry...');
+      return false; // Indicate failure
+    }
+
+    const button = document.createElement('button');
+    button.id = 'job-tracker-compare-btn';
+    button.innerHTML = '🤖 Match';
+    button.className = 'artdeco-button artdeco-button--secondary artdeco-button--3';
+    button.type = 'button';
+
+    button.style.cssText = `
+      height: 40px !important;
+      padding: 10px 20px !important;
+      border: none !important;
+      background: linear-gradient(135deg, #667eea, #764ba2) !important;
+      color: white !important;
+      margin-left: 8px !important;
+      margin-top: 8px !important;
+      display: inline-block !important;
+      vertical-align: middle !important;
+      box-sizing: border-box !important;
+      cursor: pointer !important;
+      transition: opacity 0.2s ease !important;
+    `;
+
+    // Add hover effect
+    button.onmouseenter = () => button.style.opacity = '0.9';
+    button.onmouseleave = () => button.style.opacity = '1';
+
+    button.addEventListener('click', () => this.compareWithResume());
+
+    // Strategy 1: Try to insert after the flex container
+    const displayFlexContainer = saveButton.closest('.display-flex');
+    if (displayFlexContainer && displayFlexContainer.parentElement) {
+      displayFlexContainer.insertAdjacentElement('afterend', button);
+      debugLog('✅ Compare button added successfully');
+      return true;
+    }
+
+    // Strategy 2: Insert in the same parent as save button
+    const saveButtonParent = saveButton.parentElement;
+    if (saveButtonParent) {
+      const wrapper = document.createElement('div');
+      wrapper.style.cssText = 'display: inline-block; margin-left: 8px;';
+      wrapper.appendChild(button);
+      saveButtonParent.appendChild(wrapper);
+      debugLog('✅ Compare button added (fallback method)');
+      return true;
+    }
+
+    debugLog('❌ Could not find container for compare button');
     return false;
   }
 
@@ -595,7 +661,7 @@ class LinkedInJobExtractor {
 
   async extractAndSave() {
     debugLog('Extract and save triggered...');
-    
+
     if (!this.userId) {
       this.showNotification('⚠️ Please set your User ID in the extension popup first!');
       return;
@@ -614,6 +680,77 @@ class LinkedInJobExtractor {
     }
 
     await this.saveToServer(data, constants);
+  }
+
+  async compareWithResume() {
+    debugLog('🤖 AI Compare triggered...');
+
+    if (!this.userId) {
+      this.showNotification('⚠️ Please set your User ID in the extension popup first!');
+      return;
+    }
+
+    const button = document.getElementById('job-tracker-compare-btn');
+    if (button) {
+      button.textContent = '⏳ Analyzing...';
+      button.disabled = true;
+    }
+
+    try {
+      // Extract job description
+      const descriptionElement = document.querySelector('.jobs-description-content__text') ||
+                                 document.querySelector('.jobs-box__html-content') ||
+                                 document.querySelector('.jobs-description__content') ||
+                                 document.querySelector('[class*="job-details"]');
+
+      if (!descriptionElement) {
+        this.showNotification('❌ Could not extract job description from page');
+        return;
+      }
+
+      const jobDescription = descriptionElement.innerText || descriptionElement.textContent;
+      debugLog('📄 Job description extracted, length:', jobDescription.length);
+
+      // Call AI analysis API
+      const API_URL = 'https://jobtracker-production-2ed3.up.railway.app/api';
+      const response = await fetch(`${API_URL}/ai/analyze`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-id': this.userId
+        },
+        body: JSON.stringify({
+          jobDescription: jobDescription.trim()
+        })
+      });
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.message || 'AI analysis failed');
+      }
+
+      const analysis = result.data;
+      debugLog('✅ AI Analysis complete:', analysis);
+
+      // Show success notification with match score
+      const matchScore = analysis.matchScore || 0;
+      const scoreColor = matchScore >= 80 ? '🟢' : matchScore >= 60 ? '🟡' : '🔴';
+      this.showNotification(`${scoreColor} Match: ${matchScore}% - Open popup to see details!`);
+
+    } catch (error) {
+      debugError('❌ Error in AI comparison:', error);
+      if (error.message.includes('resume')) {
+        this.showNotification('📄 Please upload a resume in the dashboard first');
+      } else {
+        this.showNotification(`❌ AI analysis failed: ${error.message}`);
+      }
+    } finally {
+      if (button) {
+        button.textContent = '🤖 Match';
+        button.disabled = false;
+      }
+    }
   }
 
   // Handle duplicate detection responses from server
@@ -761,22 +898,35 @@ class LinkedInJobExtractor {
       
       debounceTimer = setTimeout(() => {
         isProcessing = true;
-        
+
         const saveButton = document.querySelector('.jobs-save-button') || document.querySelector('[data-view-name="job-save-button"]');
-        const existingButton = document.getElementById('job-tracker-extract-btn');
-        
-        if (saveButton && !existingButton && this.userId) {
-          debugLog('➕ Adding button to new job...');
-          this.addExtractButton();
-        } 
+        const existingExtractBtn = document.getElementById('job-tracker-extract-btn');
+        const existingCompareBtn = document.getElementById('job-tracker-compare-btn');
+
+        if (saveButton && this.userId) {
+          if (!existingExtractBtn) {
+            debugLog('➕ Adding Extract button to new job...');
+            this.addExtractButton();
+          }
+          if (!existingCompareBtn) {
+            debugLog('➕ Adding Compare button to new job...');
+            this.addCompareButton();
+          }
+        }
         debugLog('🔄 Refreshing job snapshot...');
 
-        
-        if (existingButton && !saveButton) {
-          debugLog('🗑️ Removing orphaned button...');
-          existingButton.remove();
+
+        if (!saveButton) {
+          if (existingExtractBtn) {
+            debugLog('🗑️ Removing orphaned extract button...');
+            existingExtractBtn.remove();
+          }
+          if (existingCompareBtn) {
+            debugLog('🗑️ Removing orphaned compare button...');
+            existingCompareBtn.remove();
+          }
         }
-        
+
         isProcessing = false;
       }, 200);
     });
@@ -826,9 +976,13 @@ const waitForConstants = async () => {
 
 // Listen for messages from popup
 chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
-  debugLog('Message received:', request);
+  debugLog('📨 Message received:', request);
 
-  if (request.action === 'getCurrentJob') {
+  if (request.action === 'ping') {
+    // Simple ping to check if content script is ready
+    debugLog('✅ Responding to ping');
+    sendResponse({ success: true, ready: true });
+  } else if (request.action === 'getCurrentJob') {
     const jobData = window.jobExtractor ? window.jobExtractor.extractJobData() : null;
     sendResponse({jobData: jobData});
   } else if (request.action === 'getJobDescription') {
@@ -841,10 +995,16 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
 
       if (descriptionElement) {
         const description = descriptionElement.innerText || descriptionElement.textContent;
-        debugLog('📄 Job description extracted:', description.substring(0, 100) + '...');
+        debugLog('📄 Job description extracted, length:', description.length);
         sendResponse({ success: true, description: description.trim() });
       } else {
         debugError('❌ Could not find job description element');
+        debugLog('Available elements:', {
+          desc1: !!document.querySelector('.jobs-description-content__text'),
+          desc2: !!document.querySelector('.jobs-box__html-content'),
+          desc3: !!document.querySelector('.jobs-description__content'),
+          desc4: !!document.querySelector('[class*="job-details"]')
+        });
         sendResponse({ success: false, description: null });
       }
     } catch (error) {
@@ -868,4 +1028,4 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
   return true; // Keep message channel open for async response
 });
 
-debugLog('Job Tracker content script loaded successfully');
+debugLog('✅ Job Tracker content script loaded successfully - message listener ready');
