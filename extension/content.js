@@ -10,86 +10,342 @@ const modalStyles = `
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    width: 90%;
-    max-width: 800px;
-    max-height: 90vh;
-    background: #1a1b26;
-    color: #e0e0e0;
+    width: 92%;
+    max-width: 850px;
+    max-height: 92vh;
+    background: linear-gradient(145deg, #0f1219 0%, #1a1d2e 100%);
+    color: #e2e8f0;
     z-index: 10001;
-    border-radius: 16px;
-    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-    font-family: 'Inter', -apple-system, sans-serif;
+    border-radius: 20px;
+    box-shadow: 0 32px 64px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(139, 92, 246, 0.1);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    border: 1px solid #2f334d;
-    animation: fadeIn 0.3s ease-out;
+    animation: modalSlideIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
   }
+
   #ai-analysis-header {
-    background: linear-gradient(135deg, #4f46e5, #7c3aed);
-    padding: 20px 30px;
+    background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #a855f7 100%);
+    padding: 24px 32px;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    border-bottom: 1px solid rgba(255,255,255,0.1);
+    border-bottom: 1px solid rgba(139, 92, 246, 0.2);
+    position: relative;
+    overflow: hidden;
   }
+
+  #ai-analysis-header::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: radial-gradient(circle at top right, rgba(255,255,255,0.15) 0%, transparent 60%);
+    pointer-events: none;
+  }
+
+  #ai-analysis-header h2 {
+    position: relative;
+    z-index: 1;
+    margin: 0;
+    font-size: 22px;
+    font-weight: 700;
+    color: white;
+    text-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  }
+
+  #ai-analysis-header .subtitle {
+    position: relative;
+    z-index: 1;
+    font-size: 13px;
+    opacity: 0.95;
+    margin-top: 4px;
+    color: rgba(255,255,255,0.9);
+    font-weight: 500;
+  }
+
   #ai-analysis-content {
-    padding: 30px;
+    padding: 28px 32px 32px;
     overflow-y: auto;
-    scrollbar-width: thin;
-    scrollbar-color: #4f46e5 #1a1b26;
+    background: #0f1219;
   }
-  .analysis-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
+
+  #ai-analysis-content::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  #ai-analysis-content::-webkit-scrollbar-track {
+    background: rgba(0,0,0,0.2);
+    border-radius: 10px;
+  }
+
+  #ai-analysis-content::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, #6366f1, #8b5cf6);
+    border-radius: 10px;
+    border: 2px solid #0f1219;
+  }
+
+  #ai-analysis-content::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(180deg, #7c3aed, #a855f7);
+  }
+
+  .match-score-banner {
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(139, 92, 246, 0.15) 100%);
+    border: 1px solid rgba(139, 92, 246, 0.3);
+    border-radius: 16px;
+    padding: 20px 24px;
+    margin-bottom: 24px;
+    display: flex;
+    align-items: center;
     gap: 20px;
-    margin-bottom: 25px;
+    backdrop-filter: blur(10px);
+    position: relative;
+    overflow: hidden;
   }
-  .score-card {
-    background: rgba(255,255,255,0.05);
+
+  .match-score-banner::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    right: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle, rgba(139, 92, 246, 0.1) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  .match-score-value {
+    position: relative;
+    font-size: 48px;
+    font-weight: 800;
+    line-height: 1;
+    letter-spacing: -1px;
+    background: linear-gradient(135deg, currentColor 0%, currentColor 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    text-shadow: 0 2px 12px currentColor;
+  }
+
+  .match-score-info {
+    position: relative;
+    flex: 1;
+  }
+
+  .match-score-label {
+    font-size: 15px;
+    font-weight: 700;
+    color: #f1f5f9;
+    margin-bottom: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .match-score-headline {
+    font-size: 13px;
+    color: #94a3b8;
+    font-weight: 500;
+  }
+
+  .analysis-section {
+    background: linear-gradient(145deg, rgba(30, 41, 59, 0.5) 0%, rgba(15, 23, 42, 0.5) 100%);
+    border-radius: 16px;
+    padding: 24px;
+    margin-bottom: 20px;
+    border: 1px solid rgba(148, 163, 184, 0.1);
+    backdrop-filter: blur(10px);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  .analysis-section:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+  }
+
+  .section-title {
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+    color: #cbd5e1;
+    margin-bottom: 16px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .section-title::before {
+    content: '';
+    width: 4px;
+    height: 16px;
+    background: linear-gradient(180deg, #6366f1, #8b5cf6);
+    border-radius: 2px;
+  }
+
+  .section-minimum {
+    background: linear-gradient(145deg, rgba(239, 68, 68, 0.12) 0%, rgba(185, 28, 28, 0.08) 100%);
+    border-color: rgba(239, 68, 68, 0.25);
+  }
+
+  .section-minimum .section-title {
+    color: #fca5a5;
+  }
+
+  .section-minimum .section-title::before {
+    background: linear-gradient(180deg, #ef4444, #dc2626);
+  }
+
+  .section-recommended {
+    background: linear-gradient(145deg, rgba(59, 130, 246, 0.12) 0%, rgba(37, 99, 235, 0.08) 100%);
+    border-color: rgba(59, 130, 246, 0.25);
+  }
+
+  .section-recommended .section-title {
+    color: #93c5fd;
+  }
+
+  .section-recommended .section-title::before {
+    background: linear-gradient(180deg, #3b82f6, #2563eb);
+  }
+
+  .section-quickwins {
+    background: linear-gradient(145deg, rgba(168, 85, 247, 0.12) 0%, rgba(126, 58, 237, 0.08) 100%);
+    border-color: rgba(168, 85, 247, 0.25);
+  }
+
+  .section-quickwins .section-title {
+    color: #c4b5fd;
+  }
+
+  .section-quickwins .section-title::before {
+    background: linear-gradient(180deg, #a855f7, #7e3af2);
+  }
+
+  .skill-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px;
+    border-radius: 10px;
+    font-size: 13px;
+    margin: 4px;
+    font-weight: 600;
+    transition: all 0.2s ease;
+    backdrop-filter: blur(10px);
+  }
+
+  .skill-tag:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  }
+
+  .skill-match {
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.25) 0%, rgba(5, 150, 105, 0.15) 100%);
+    color: #6ee7b7;
+    border: 1px solid rgba(16, 185, 129, 0.4);
+  }
+
+  .skill-missing {
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.25) 0%, rgba(220, 38, 38, 0.15) 100%);
+    color: #fca5a5;
+    border: 1px solid rgba(239, 68, 68, 0.4);
+  }
+
+  .analysis-text {
+    line-height: 1.7;
+    color: #cbd5e1;
+    font-size: 14px;
+    font-weight: 400;
+  }
+
+  .requirements-list {
+    margin: 0;
+    padding-left: 0;
+    list-style: none;
+  }
+
+  .requirements-list li {
+    margin-bottom: 14px;
+    padding-left: 28px;
+    position: relative;
+    color: #e2e8f0;
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  .requirements-list li::before {
+    content: attr(data-icon);
+    position: absolute;
+    left: 0;
+    top: 0;
+    font-size: 16px;
+    font-weight: bold;
+  }
+
+  .requirement-details {
+    font-size: 13px;
+    color: #94a3b8;
+    margin-top: 6px;
+    padding-left: 0;
+    line-height: 1.5;
+    font-style: italic;
+  }
+
+  .close-btn {
+    position: relative;
+    z-index: 2;
+    background: rgba(255,255,255,0.15);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255,255,255,0.2);
+    color: white;
+    width: 36px;
+    height: 36px;
     border-radius: 12px;
-    padding: 20px;
-    text-align: center;
-    border: 1px solid rgba(255,255,255,0.1);
-  }
-  .score-circle {
-    width: 80px;
-    height: 80px;
-    border-radius: 50%;
-    border: 4px solid;
+    cursor: pointer;
+    font-size: 20px;
+    font-weight: 600;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 28px;
-    font-weight: bold;
-    margin: 0 auto 10px;
+    transition: all 0.2s ease;
   }
-  .skills-card {
-    background: rgba(255,255,255,0.05);
-    border-radius: 12px;
-    padding: 20px;
-    border: 1px solid rgba(255,255,255,0.1);
+
+  .close-btn:hover {
+    background: rgba(255,255,255,0.25);
+    transform: scale(1.05);
   }
-  .skill-tag {
-    display: inline-block;
-    padding: 4px 10px;
-    border-radius: 20px;
-    font-size: 12px;
-    margin: 2px;
-    font-weight: 500;
+
+  .close-btn:active {
+    transform: scale(0.95);
   }
-  .skill-match { background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); }
-  .skill-missing { background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); }
-  .section-title {
-    font-size: 14px; text-transform: uppercase; letter-spacing: 1px; color: #94a3b8; margin-bottom: 12px; font-weight: 600;
+
+  @keyframes modalSlideIn {
+    from {
+      opacity: 0;
+      transform: translate(-50%, -45%) scale(0.95);
+    }
+    to {
+      opacity: 1;
+      transform: translate(-50%, -50%) scale(1);
+    }
   }
-  .analysis-text { line-height: 1.6; color: #cbd5e1; font-size: 15px; }
-  .close-btn {
-    background: rgba(255,255,255,0.2); border: none; color: white; width: 30px; height: 30px; border-radius: 50%;
-    cursor: pointer; font-size: 18px; display: flex; align-items: center; justify-content: center; transition: background 0.2s;
+
+  @media (max-width: 768px) {
+    #ai-analysis-modal {
+      width: 95%;
+      max-height: 95vh;
+    }
+
+    #ai-analysis-content {
+      padding: 20px;
+    }
+
+    .match-score-value {
+      font-size: 36px;
+    }
   }
-  .close-btn:hover { background: rgba(255,255,255,0.3); }
-  @keyframes fadeIn { from { opacity: 0; transform: translate(-50%, -48%); } to { opacity: 1; transform: translate(-50%, -50%); } }
 `;
 
 const styleSheet = document.createElement("style");
@@ -870,74 +1126,73 @@ class LinkedInJobExtractor {
     modal.innerHTML = `
       <div id="ai-analysis-header">
         <div>
-          <h2 style="margin:0; font-size: 20px; color: white;">AI Resume Analysis</h2>
-          <div style="font-size: 13px; opacity: 0.8; margin-top: 4px;">Based on your active resume</div>
+          <h2>🎯 AI Resume Analysis</h2>
+          <div class="subtitle">Based on your active resume</div>
         </div>
-        <button class="close-btn" id="close-ai-modal">×</button>
+        <div style="display: flex; align-items: center; gap: 16px;">
+          <div style="text-align: center;">
+            <div style="font-size: 36px; font-weight: 800; color: ${scoreColor}; line-height: 1; text-shadow: 0 2px 12px currentColor;">${score}%</div>
+            <div style="font-size: 11px; color: rgba(255,255,255,0.8); margin-top: 4px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Match</div>
+          </div>
+          <button class="close-btn" id="close-ai-modal">×</button>
+        </div>
       </div>
 
       <div id="ai-analysis-content">
-        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 20px; padding: 16px; background: rgba(255,255,255,0.05); border-radius: 12px; border: 1px solid rgba(255,255,255,0.1);">
-          <div style="display: flex; align-items: center; gap: 10px; flex: 1;">
-            <div style="font-size: 28px; font-weight: 700; color: ${scoreColor};">${score}%</div>
-            <div>
-              <div style="font-size: 14px; font-weight: 600; color: white;">Match Score</div>
-              <div style="font-size: 11px; color: #94a3b8;">${data.headline || 'Overall compatibility'}</div>
-            </div>
-          </div>
-        </div>
-
+        <!-- Minimum Requirements -->
         ${data.minimumRequirements && data.minimumRequirements.length > 0 ? `
-          <div style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.2); border-radius: 12px; padding: 20px; margin-bottom: 20px;">
-            <div class="section-title" style="color: #fca5a5;">⚡ Minimum Requirements</div>
-            <ul style="margin: 0; padding-left: 20px; color: #fecaca; font-size: 14px;">
+          <div class="analysis-section section-minimum">
+            <div class="section-title">⚡ Minimum Requirements</div>
+            <ul class="requirements-list">
               ${data.minimumRequirements.map(req => `
-                <li style="margin-bottom: 8px;">
-                  <span style="color: ${req.met ? '#86efac' : '#fca5a5'}">${req.met ? '✓' : '✗'}</span>
-                  <span style="color: #e0e7ff">${req.requirement}</span>
-                  ${req.details ? `<div style="font-size: 12px; color: #94a3b8; margin-top: 4px;">${req.details}</div>` : ''}
+                <li data-icon="${req.met ? '✅' : '❌'}">
+                  <div>${req.requirement}</div>
+                  ${req.details ? `<div class="requirement-details">${req.details}</div>` : ''}
                 </li>
               `).join('')}
             </ul>
           </div>
         ` : ''}
 
-        <div style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 20px; margin-bottom: 20px;">
+        <!-- Skills Breakdown -->
+        <div class="analysis-section">
           <div class="section-title">📊 Skills Breakdown</div>
-          <div style="margin-bottom: 10px;">
-            ${matchingHtml || '<span style="color:#666; font-size:12px">No direct matches found</span>'}
+          <div style="margin-bottom: 12px;">
+            ${matchingHtml || '<div style="color: #64748b; font-size: 13px; font-style: italic;">No direct skill matches found</div>'}
           </div>
-          <div>
-            ${missingHtml}
-          </div>
+          ${missingHtml ? `<div>${missingHtml}</div>` : ''}
         </div>
 
+        <!-- Recommended Requirements -->
         ${data.recommendedRequirements && data.recommendedRequirements.length > 0 ? `
-          <div style="background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.2); border-radius: 12px; padding: 20px; margin-bottom: 20px;">
-            <div class="section-title" style="color: #93c5fd;">💎 Recommended Requirements</div>
-            <ul style="margin: 0; padding-left: 20px; color: #bfdbfe; font-size: 14px;">
+          <div class="analysis-section section-recommended">
+            <div class="section-title">💎 Recommended Requirements</div>
+            <ul class="requirements-list">
               ${data.recommendedRequirements.map(req => `
-                <li style="margin-bottom: 8px;">
-                  <span style="color: ${req.met ? '#86efac' : '#93c5fd'}">${req.met ? '✓' : '○'}</span>
-                  <span style="color: #e0e7ff">${req.requirement}</span>
-                  ${req.details ? `<div style="font-size: 12px; color: #94a3b8; margin-top: 4px;">${req.details}</div>` : ''}
+                <li data-icon="${req.met ? '✅' : '⭕'}">
+                  <div>${req.requirement}</div>
+                  ${req.details ? `<div class="requirement-details">${req.details}</div>` : ''}
                 </li>
               `).join('')}
             </ul>
           </div>
         ` : ''}
 
+        <!-- Quick Wins -->
         ${data.quickFixes && data.quickFixes.length > 0 ? `
-          <div style="background: rgba(79, 70, 229, 0.1); border: 1px solid rgba(79, 70, 229, 0.2); border-radius: 12px; padding: 20px; margin-bottom: 20px;">
-            <div class="section-title" style="color: #818cf8;">🚀 Quick Wins</div>
-            <ul style="margin: 0; padding-left: 20px; color: #e0e7ff; font-size: 14px;">
-              ${data.quickFixes.map(fix => `<li style="margin-bottom:5px;">${fix}</li>`).join('')}
+          <div class="analysis-section section-quickwins">
+            <div class="section-title">🚀 Quick Wins</div>
+            <ul class="requirements-list">
+              ${data.quickFixes.map(fix => `
+                <li data-icon="💡">${fix}</li>
+              `).join('')}
             </ul>
           </div>
         ` : ''}
 
-        <div style="background: rgba(255,255,255,0.03); border-radius: 12px; padding: 20px;">
-          <div class="section-title">💡 Detailed Feedback</div>
+        <!-- Detailed Feedback -->
+        <div class="analysis-section">
+          <div class="section-title">💬 Detailed Feedback</div>
           <div class="analysis-text">
             ${data.detailedAnalysis || data.recommendation || 'No detailed analysis provided.'}
           </div>
