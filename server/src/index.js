@@ -357,6 +357,56 @@ app.get('/api/health', (req, res) => res.json({
   database: mongoose.connection.readyState === 1 ? 'Connected' : 'Disconnected'
 }));
 
+// Test Gemini API models - for debugging
+app.get('/api/test-gemini', async (req, res) => {
+  try {
+    if (!process.env.GEMINI_API_KEY) {
+      return res.json({
+        success: false,
+        message: 'No API key configured',
+        hasApiKey: false
+      });
+    }
+
+    // Try different model names to see which works
+    const modelsToTest = [
+      'gemini-pro',
+      'gemini-1.5-flash',
+      'gemini-1.5-pro',
+      'models/gemini-pro',
+      'models/gemini-1.5-flash',
+      'models/gemini-1.5-pro'
+    ];
+
+    const results = {};
+
+    for (const modelName of modelsToTest) {
+      try {
+        const model = genAI.getGenerativeModel({ model: modelName });
+        const result = await model.generateContent('Hello, respond with just "OK"');
+        const response = await result.response;
+        const text = response.text();
+        results[modelName] = { success: true, response: text };
+      } catch (error) {
+        results[modelName] = { success: false, error: error.message };
+      }
+    }
+
+    res.json({
+      success: true,
+      hasApiKey: true,
+      apiKeyPrefix: process.env.GEMINI_API_KEY.substring(0, 10) + '...',
+      results
+    });
+
+  } catch (error) {
+    res.json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
 // Get All Applications
 app.get('/api/applications', validateUserId, async (req, res) => {
   try {
