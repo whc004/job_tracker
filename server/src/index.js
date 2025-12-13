@@ -285,15 +285,10 @@ async function analyzeJobWithAI(jobDescription, resumeText) {
       throw new Error('GEMINI_API_KEY not configured');
     }
 
-    // Configure model to force JSON output - no more parsing needed!
-    const model = genAI.getGenerativeModel({
-      model: 'gemini-pro',
-      generationConfig: {
-        responseMimeType: 'application/json'
-      }
-    });
+    // Use gemini-1.5-flash model (faster and widely available)
+    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
 
-    const prompt = `You are an expert technical recruiter. Analyze the Resume against the Job Description.
+    const prompt = `You are an expert technical recruiter analyzing a resume against a job description.
 
 RESUME:
 ${resumeText}
@@ -301,34 +296,34 @@ ${resumeText}
 JOB DESCRIPTION:
 ${jobDescription}
 
-Output a JSON object with this exact schema:
-
-IMPORTANT CONSTRAINTS:
-- Keep all descriptions SHORT (under 10 words) for mobile UI
-- Focus on technical skills and concrete requirements
-- Use exact terms from the job description
+Provide your analysis in VALID JSON format only (no markdown, no code blocks). Keep all text under 10 words for mobile UI.
 
 {
-  "matchScore": number, // 0-100, weighted: skills(40%) + experience(30%) + requirements(30%)
-  "headline": string, // 3-5 word summary (e.g., "Strong Match: Python & AWS")
-  "matchingSkills": string[], // Technical skills found in BOTH resume and JD
-  "missingSkills": string[], // Technical skills in JD but NOT in resume
+  "matchScore": 85,
+  "headline": "Strong Python & Cloud Match",
+  "matchingSkills": ["Python", "AWS", "Docker"],
+  "missingSkills": ["Kubernetes", "Go"],
   "minimumRequirements": [
-    // Critical "must-have" requirements (citizenship, degree, years exp, etc.)
-    { "requirement": string, "met": boolean, "details": string }
+    { "requirement": "Bachelor's degree", "met": true, "details": "Has CS degree" },
+    { "requirement": "3+ years experience", "met": false, "details": "Only 2 years" }
   ],
-  "strengths": string[], // 3-4 bullet points where candidate excels (max 10 words each)
-  "weaknesses": string[], // 2-3 bullet points where candidate falls short (max 10 words each)
-  "quickFixes": string[], // 3 actionable resume tailoring tips (max 10 words each)
-  "recommendation": string, // 1-2 sentences: "Strong match" or "Partial match" etc.
-  "detailedAnalysis": string // 2-3 sentences explaining overall fit
-}`;
+  "strengths": ["Strong Python skills", "AWS certified"],
+  "weaknesses": ["Limited DevOps experience"],
+  "quickFixes": ["Add Kubernetes projects", "Highlight cloud work"],
+  "recommendation": "Strong match for mid-level position",
+  "detailedAnalysis": "Candidate has core skills but needs more DevOps experience"
+}
+
+Output ONLY valid JSON:`;
 
     const result = await model.generateContent(prompt);
     const response = await result.response;
-    const text = response.text();
+    let text = response.text().trim();
 
-    // Parse JSON response - guaranteed to be valid JSON with responseMimeType
+    // Remove markdown code blocks if present
+    text = text.replace(/^```json\s*/i, '').replace(/^```\s*/,'').replace(/```\s*$/,'').trim();
+
+    // Parse JSON response
     const analysis = JSON.parse(text);
 
     // Ensure backward compatibility with existing UI (keyRequirements)
