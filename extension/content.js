@@ -332,6 +332,93 @@ const modalStyles = `
     }
   }
 
+  @keyframes progressGrow {
+    from { width: 0%; }
+    to { width: 100%; }
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+  }
+
+  @keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+
+  .loading-container {
+    text-align: center;
+    padding: 60px 40px;
+  }
+
+  .loading-spinner {
+    width: 80px;
+    height: 80px;
+    margin: 0 auto 30px;
+    position: relative;
+  }
+
+  .loading-spinner-ring {
+    width: 100%;
+    height: 100%;
+    border: 4px solid rgba(139, 92, 246, 0.1);
+    border-top-color: #8b5cf6;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+  }
+
+  .loading-progress-bar {
+    width: 100%;
+    height: 6px;
+    background: rgba(139, 92, 246, 0.1);
+    border-radius: 10px;
+    overflow: hidden;
+    margin: 30px 0 20px;
+  }
+
+  .loading-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #6366f1, #8b5cf6, #a855f7);
+    border-radius: 10px;
+    animation: progressGrow 30s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  }
+
+  .loading-title {
+    font-size: 22px;
+    font-weight: 700;
+    color: #e2e8f0;
+    margin-bottom: 12px;
+  }
+
+  .loading-subtitle {
+    font-size: 14px;
+    color: #94a3b8;
+    margin-bottom: 8px;
+  }
+
+  .loading-tip {
+    font-size: 13px;
+    color: #cbd5e1;
+    margin-top: 20px;
+    padding: 16px 20px;
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+    border-radius: 12px;
+    border: 1px solid rgba(139, 92, 246, 0.2);
+    min-height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    line-height: 1.5;
+    transition: opacity 0.3s ease-in-out;
+  }
+
+  .loading-tip::before {
+    content: '💡 ';
+    margin-right: 8px;
+  }
+
   @media (max-width: 768px) {
     #ai-analysis-modal {
       width: 95%;
@@ -344,6 +431,10 @@ const modalStyles = `
 
     .match-score-value {
       font-size: 36px;
+    }
+
+    .loading-container {
+      padding: 40px 20px;
     }
   }
 `;
@@ -1031,6 +1122,76 @@ class LinkedInJobExtractor {
     await this.saveToServer(data, constants);
   }
 
+  showLoadingModal() {
+    // Remove existing modal if present
+    const existing = document.getElementById('ai-analysis-modal');
+    if (existing) existing.remove();
+
+    const tips = [
+      "Analyzing your resume against job requirements...",
+      "Comparing your skills with the job description...",
+      "Identifying matching and missing skills...",
+      "Evaluating minimum and recommended requirements...",
+      "Generating personalized recommendations...",
+      "Calculating compatibility score...",
+      "Preparing actionable quick wins...",
+      "AI is processing thousands of data points...",
+      "This usually takes 20-30 seconds for best results..."
+    ];
+
+    let currentTipIndex = 0;
+
+    const modal = document.createElement('div');
+    modal.id = 'ai-analysis-modal';
+    modal.innerHTML = `
+      <div id="ai-analysis-header">
+        <div>
+          <h2>🤖 AI Analysis in Progress</h2>
+          <div class="subtitle">Please wait while we analyze your match...</div>
+        </div>
+        <button class="close-btn" id="close-ai-modal">×</button>
+      </div>
+      <div id="ai-analysis-content">
+        <div class="loading-container">
+          <div class="loading-spinner">
+            <div class="loading-spinner-ring"></div>
+          </div>
+          <div class="loading-title">Analyzing with AI</div>
+          <div class="loading-subtitle">Powered by Google Gemini</div>
+          <div class="loading-progress-bar">
+            <div class="loading-progress-fill"></div>
+          </div>
+          <div class="loading-tip" id="loading-tip">${tips[0]}</div>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    // Close button handler
+    document.getElementById('close-ai-modal').addEventListener('click', () => modal.remove());
+
+    // Rotate tips every 3 seconds
+    const tipInterval = setInterval(() => {
+      currentTipIndex = (currentTipIndex + 1) % tips.length;
+      const tipElement = document.getElementById('loading-tip');
+      if (tipElement) {
+        tipElement.style.opacity = '0';
+        setTimeout(() => {
+          tipElement.textContent = tips[currentTipIndex];
+          tipElement.style.opacity = '1';
+        }, 200);
+      } else {
+        clearInterval(tipInterval);
+      }
+    }, 3000);
+
+    // Store interval ID so we can clear it later
+    modal.dataset.tipInterval = tipInterval;
+
+    return modal;
+  }
+
   async compareWithResume() {
     debugLog('🤖 AI Compare triggered...');
 
@@ -1045,6 +1206,9 @@ class LinkedInJobExtractor {
       button.disabled = true;
     }
 
+    // Show loading modal
+    const loadingModal = this.showLoadingModal();
+
     try {
       // Extract job description (Keep your existing robust extraction logic)
       const descriptionElement = document.querySelector('.jobs-description-content__text') ||
@@ -1053,6 +1217,7 @@ class LinkedInJobExtractor {
                                  document.querySelector('[class*="job-details"]');
 
       if (!descriptionElement) {
+        loadingModal.remove();
         this.showNotification('❌ Could not extract job description from page');
         return;
       }
@@ -1083,10 +1248,16 @@ class LinkedInJobExtractor {
       debugLog('✅ AI Analysis complete:', analysis);
 
       // ➤ CHANGE HERE: Call the new Modal instead of Notification
+      // Clear loading modal interval before showing results
+      clearInterval(parseInt(loadingModal.dataset.tipInterval));
       this.showAnalysisModal(analysis);
 
     } catch (error) {
       debugError('❌ Error in AI comparison:', error);
+      // Clear loading modal interval and remove modal
+      clearInterval(parseInt(loadingModal.dataset.tipInterval));
+      loadingModal.remove();
+
       if (error.message.includes('resume')) {
         this.showNotification('📄 Please upload a resume in the dashboard first');
       } else {
@@ -1101,9 +1272,15 @@ class LinkedInJobExtractor {
   }
 
   showAnalysisModal(data) {
-    // Remove existing modal if it's already open
+    // Remove existing modal if it's already open (including loading modal)
     const existing = document.getElementById('ai-analysis-modal');
-    if (existing) existing.remove();
+    if (existing) {
+      // Clear any running intervals
+      if (existing.dataset.tipInterval) {
+        clearInterval(parseInt(existing.dataset.tipInterval));
+      }
+      existing.remove();
+    }
 
     // Calculate match score color
     const score = data.matchScore || 0;
