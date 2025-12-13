@@ -1,4 +1,4 @@
-const DEBUG_LOGGING = true;
+const DEBUG_LOGGING = false;
 const debugLog = (...args) => { if (DEBUG_LOGGING) console.log('[CONTENT]', ...args); };
 const debugError = (...args) => { if (DEBUG_LOGGING) console.error('[CONTENT]', ...args); };
 const debugWarn = (...args) => { if (DEBUG_LOGGING) console.warn('[CONTENT]', ...args); };
@@ -855,7 +855,7 @@ class LinkedInJobExtractor {
   }
 
   async compareWithResume() {
-    debugLog('🤖 AI Compare triggered...');
+    debugLog('✦ AI Compare triggered...');
 
     if (!this.userId) {
       this.showNotification('⚠️ Please set your User ID in the extension popup first!');
@@ -965,7 +965,7 @@ class LinkedInJobExtractor {
     modal.innerHTML = `
       <div id="ai-analysis-header">
         <div>
-          <h2>✦  AI Resume Analysis</h2>
+          <h2>✦ AI Resume Analysis</h2>
           <div class="subtitle">Based on your active resume</div>
         </div>
         <div style="display: flex; align-items: center; gap: 16px;">
@@ -988,6 +988,7 @@ class LinkedInJobExtractor {
                   <div class="req-icon">${req.met ? '✅' : '❌'}</div>
                   <div>
                     <div>${req.requirement}</div>
+                    ${req.details ? `<div class="requirement-details">${req.details}</div>` : ''}
                   </div>
                 </li>
               `).join('')}

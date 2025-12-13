@@ -29,11 +29,11 @@ Or see the [Developer Guide](#developer-guide) to set up locally.
 
 ## ✨ Features
 
-### 🤖 AI-Powered Resume Analysis (New!)
+### 🤖 AI-Powered Resume Analysis
 - **Intelligent Job Matching** - AI-powered comparison between your resume and job descriptions using Google Gemini
 - **Match Score Calculation** - Get instant compatibility scores (0-100%) for each job posting
 - **Skills Gap Analysis** - Automatically identifies matching skills (✓) and missing skills (✗) with visual breakdown
-- **Requirements Tracking** - Separate analysis for minimum requirements (must-have) and recommended requirements (nice-to-have)
+- **Requirements Validation** - Instant checklist of "Minimum Requirements" to see if you are qualified for the role.
 - **Smart Recommendations** - AI-generated "Quick Wins" for improving your application competitiveness
 - **Detailed Feedback** - Comprehensive analysis explaining strengths, weaknesses, and action items
 - **Resume Management** - Upload multiple resumes and switch between them for different job types
@@ -76,7 +76,7 @@ Or see the [Developer Guide](#developer-guide) to set up locally.
 - **Chrome Extension**: Vanilla JavaScript with AI-powered analysis modal
 - **Backend**: Node.js with Express
 - **Database**: MongoDB (free tier) with GridFS for resume storage
-- **AI/ML**: Google Gemini 2.5 Flash API for intelligent job matching
+- **AI/ML**: Google Gemini 1.5 Flash API for intelligent job matching
 - **Deployment**: Railway (Backend) + Vercel (Frontend)
 
 ---
@@ -222,7 +222,6 @@ You have two options to start using Job Tracker:
 5. View your personalized analysis modal with:
    - **⚡ Minimum Requirements** - Critical must-have requirements with ✓/✗ indicators
    - **📊 Skills Breakdown** - Your matching skills (green ✓) and missing skills (red ✗)
-   - **💎 Recommended Requirements** - Nice-to-have qualifications assessment
    - **🚀 Quick Wins** - Actionable tips to improve your application competitiveness
    - **💡 Detailed Feedback** - Comprehensive AI analysis of your fit for the role
 
@@ -428,7 +427,6 @@ See [CHROME_STORE_GUIDE.md](./CHROME_STORE_GUIDE.md)
 11. Extension displays beautiful analysis modal with:
     - Minimum Requirements (must-haves)
     - Skills Breakdown (matching/missing)
-    - Recommended Requirements (nice-to-haves)
     - Quick Wins (actionable tips)
     - Detailed Feedback (comprehensive analysis)
 

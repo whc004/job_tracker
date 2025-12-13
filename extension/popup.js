@@ -1,4 +1,4 @@
-const DEBUG_LOGGING = true;
+const DEBUG_LOGGING = false;
 const debugLog = (...args) => { if (DEBUG_LOGGING) console.log('[POPUP]', ...args); };
 const debugError = (...args) => { if (DEBUG_LOGGING) console.error('[POPUP]', ...args); };
 const debugWarn = (...args) => { if (DEBUG_LOGGING) console.warn('[POPUP]', ...args); };
