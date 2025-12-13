@@ -4,7 +4,9 @@ A comprehensive full-stack job application tracking system that combines a Chrom
 
 ## Overview
 
-Job Tracker eliminates the pain of manually tracking job applications across multiple platforms. With one click, save job details from LinkedIn directly to your personal dashboard, complete with auto-extracted company info, salary ranges, technical requirements, and more.
+Job Tracker is an AI-powered job application management system that transforms your job search workflow. With intelligent resume-to-job matching powered by Google Gemini AI, you can instantly analyze how well you match any LinkedIn job posting—complete with match scores, skills gap analysis, and personalized recommendations.
+
+Beyond AI analysis, Job Tracker eliminates manual tracking overhead: one-click saving of job details from LinkedIn, automatic extraction of company info, salary ranges, and technical requirements, all synced to your personal dashboard in real-time.
 
 > **Why the User ID system?** We use a lightweight user ID approach instead of complex authentication to keep our MongoDB storage minimal and free-tier friendly. This keeps the service sustainable without database bloat.
 
@@ -27,15 +29,28 @@ Or see the [Developer Guide](#developer-guide) to set up locally.
 
 ## ✨ Features
 
+### 🤖 AI-Powered Resume Analysis (New!)
+- **Intelligent Job Matching** - AI-powered comparison between your resume and job descriptions using Google Gemini
+- **Match Score Calculation** - Get instant compatibility scores (0-100%) for each job posting
+- **Skills Gap Analysis** - Automatically identifies matching skills (✓) and missing skills (✗) with visual breakdown
+- **Requirements Tracking** - Separate analysis for minimum requirements (must-have) and recommended requirements (nice-to-have)
+- **Smart Recommendations** - AI-generated "Quick Wins" for improving your application competitiveness
+- **Detailed Feedback** - Comprehensive analysis explaining strengths, weaknesses, and action items
+- **Resume Management** - Upload multiple resumes and switch between them for different job types
+- **One-Click Analysis** - Simply click "Match" on any LinkedIn job page to trigger AI comparison
+
 ### Chrome Extension
 - **One-Click Save** - Extract job details from LinkedIn with a single click
 - **Auto-Fill Data** - Automatically captures company, position, location, salary, job type, experience level, work arrangement, technical keywords, and job URL
 - **Smart Keyword Detection** - Identifies 100+ technical skills and tools from job descriptions
-- **Real-time Notifications** - Instant feedback on save success/failure
+- **AI Resume Comparison** - Built-in resume-to-job matching with visual modal displaying detailed analysis
+- **Resume Selector** - View current active resume and switch between uploaded resumes directly from popup
+- **Real-time Notifications** - Instant feedback on save success/failure and AI analysis results
 - **Lightweight & Fast** - Minimal data extraction for quick saves
 
 ### Dashboard
-- **View All Applications** - See your complete job search history
+- **Resume Management** - Upload, manage, and switch between multiple resume versions
+- **View All Applications** - See your complete job search history with AI match scores
 - **Status Tracking** - Track progress through: Applied → Interview Rounds 1-5+ → Offer/Rejected
 - **Search & Filter** - Find applications by company, position, status, or priority
 - **Priority Management** - Mark jobs as Dream Job, High, Medium, or Low priority
@@ -44,6 +59,10 @@ Or see the [Developer Guide](#developer-guide) to set up locally.
 - **Real-time Updates** - Instant synchronization across devices
 
 ### Backend API
+- **AI Integration** - Google Gemini API integration for intelligent job analysis
+- **Resume Storage** - Secure resume upload, storage, and retrieval with MongoDB GridFS
+- **Resume Management** - Multi-resume support with active resume switching
+- **AI Analysis Endpoint** - Structured JSON responses with match scores, skills breakdown, and recommendations
 - **CRUD Operations** - Full create, read, update, delete functionality
 - **User ID-based Access** - Simple, lightweight authentication
 - **Data Validation** - Ensures data integrity across all operations
@@ -54,9 +73,10 @@ Or see the [Developer Guide](#developer-guide) to set up locally.
 ## 🛠 Tech Stack
 
 - **Frontend**: React
-- **Chrome Extension**: Vanilla JavaScript
+- **Chrome Extension**: Vanilla JavaScript with AI-powered analysis modal
 - **Backend**: Node.js with Express
-- **Database**: MongoDB (free tier)
+- **Database**: MongoDB (free tier) with GridFS for resume storage
+- **AI/ML**: Google Gemini 2.5 Flash API for intelligent job matching
 - **Deployment**: Railway (Backend) + Vercel (Frontend)
 
 ---
@@ -183,6 +203,47 @@ You have two options to start using Job Tracker:
 
 ---
 
+## AI-Powered Resume Analysis
+
+### Upload Your Resume
+
+1. Visit the **[Job Tracker Dashboard](https://job-tracker-gamma-three.vercel.app)**
+2. Enter your User ID and access your dashboard
+3. Click **"Upload Resume"** or the resume management section
+4. Select your resume file (PDF, DOC, DOCX, or TXT)
+5. Your resume is securely stored and ready for AI analysis
+
+### Analyze Job Match with AI
+
+1. Go to any **LinkedIn job page** that interests you
+2. Click the **Job Tracker extension icon** in your toolbar
+3. Click the **"🤖 Match"** button to trigger AI analysis
+4. Wait a few seconds while AI analyzes the job against your resume
+5. View your personalized analysis modal with:
+   - **⚡ Minimum Requirements** - Critical must-have requirements with ✓/✗ indicators
+   - **📊 Skills Breakdown** - Your matching skills (green ✓) and missing skills (red ✗)
+   - **💎 Recommended Requirements** - Nice-to-have qualifications assessment
+   - **🚀 Quick Wins** - Actionable tips to improve your application competitiveness
+   - **💡 Detailed Feedback** - Comprehensive AI analysis of your fit for the role
+
+### Switch Between Multiple Resumes
+
+1. Click the **Job Tracker extension icon**
+2. In the popup, find the **"📄 Current Resume"** section
+3. Click **"Change"** to see all your uploaded resumes
+4. Select a different resume for different job types (e.g., frontend-focused vs. full-stack)
+5. If on a LinkedIn job page, the AI will automatically re-analyze with your newly selected resume
+
+### Tips for Best AI Results
+
+- **Keep resumes updated** - Upload fresh versions when you gain new skills or experience
+- **Use multiple resume versions** - Create specialized resumes for different job types
+- **Pay attention to Quick Wins** - AI-generated tips can significantly improve your applications
+- **Review minimum requirements first** - Focus on jobs where you meet all critical requirements
+- **Check skills gaps** - Use missing skills as a learning roadmap
+
+---
+
 ## Tips for Best Results
 
 - **Save often** - The more jobs you track, the better you can see patterns
@@ -283,9 +344,15 @@ job_tracker/
 PORT=3000
 NODE_ENV=production
 MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/job_tracker
+GEMINI_API_KEY=your_google_gemini_api_key_here
 CORS_ORIGIN=chrome-extension://your_extension_id
 REACT_APP_API_URL=https://job-tracker-api.railway.app
 ```
+
+**Getting a Gemini API Key:**
+1. Visit [Google AI Studio](https://makersuite.google.com/app/apikey)
+2. Create a new API key (free tier available)
+3. Add it to your `.env` file as `GEMINI_API_KEY`
 
 ### Frontend (.env in `/client`)
 ```
@@ -302,6 +369,10 @@ See [API_DOCS.md](./API_DOCS.md) for complete endpoint documentation.
 - `PUT /api/jobs/:id` - Update a job
 - `DELETE /api/jobs/:id` - Delete a job
 - `GET /api/statistics/:userId` - Get user statistics
+- `POST /api/users/:userId/resumes` - Upload a resume (multipart/form-data)
+- `GET /api/users/:userId/resumes` - Get all resumes for user with active resume info
+- `PUT /api/users/:userId/resumes/:resumeId/active` - Set active resume
+- `POST /api/analyze` - AI-powered job analysis (requires userId, jobDescription, resumeText)
 
 ## Deployment
 
@@ -333,6 +404,7 @@ See [CHROME_STORE_GUIDE.md](./CHROME_STORE_GUIDE.md)
 
 ## How It Works (Architecture)
 
+### Job Saving Workflow
 1. User clicks extension icon on LinkedIn
 2. Content script extracts visible job data using DOM parsing
 3. Data sent to backend API with user ID
@@ -342,10 +414,30 @@ See [CHROME_STORE_GUIDE.md](./CHROME_STORE_GUIDE.md)
 7. User updates status, notes, priority
 8. Changes sync instantly
 
+### AI Analysis Workflow
+1. User uploads resume to dashboard (stored in MongoDB GridFS)
+2. User clicks "Match" button on LinkedIn job page
+3. Extension extracts job description via DOM parsing
+4. Extension sends job description + userId to backend `/api/analyze`
+5. Backend fetches user's active resume from MongoDB
+6. Backend constructs structured prompt with resume + job description
+7. Backend sends request to Google Gemini API (gemini-2.5-flash model)
+8. Gemini returns JSON with match score, skills breakdown, requirements analysis
+9. Backend parses and validates AI response
+10. Response sent back to extension
+11. Extension displays beautiful analysis modal with:
+    - Minimum Requirements (must-haves)
+    - Skills Breakdown (matching/missing)
+    - Recommended Requirements (nice-to-haves)
+    - Quick Wins (actionable tips)
+    - Detailed Feedback (comprehensive analysis)
+
 ## Performance
 
 - **Extension extraction**: <500ms
-- **API response time**: <100ms
+- **API response time**: <100ms (non-AI endpoints)
+- **AI analysis time**: 2-5 seconds (depends on Gemini API)
+- **Resume upload**: Supports files up to 5MB
 - **Database queries**: Optimized with indexes
 - **Dashboard load**: <2 seconds
 

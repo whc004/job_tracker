@@ -236,7 +236,7 @@ async function showMainInterface(userId) {
     await syncWithServer(userId);
 
     // Check if on LinkedIn job page and show Compare button
-    await checkLinkedInPage(userId);
+    //await checkLinkedInPage(userId);
 }
 
 // ========================================
@@ -835,7 +835,7 @@ async function checkLinkedInPage(userId) {
             tab.url.includes('linkedin.com/jobs/view') ||
             tab.url.includes('currentJobId=')
         );
-
+        
         if (isJobPage) {
             debugLog('✅ On LinkedIn job page, showing Match button');
 
@@ -862,6 +862,7 @@ async function checkLinkedInPage(userId) {
                     </div>
                 `;
             }
+            
         }
     } catch (error) {
         debugError('Error checking LinkedIn page:', error);

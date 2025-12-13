@@ -849,6 +849,12 @@ class LinkedInJobExtractor {
     const existing = document.getElementById('ai-analysis-modal');
     if (existing) existing.remove();
 
+    // Calculate match score color
+    const score = data.matchScore || 0;
+    let scoreColor = '#ef4444'; // Red
+    if (score >= 60) scoreColor = '#f59e0b'; // Orange
+    if (score >= 80) scoreColor = '#10b981'; // Green
+
     // Generate Skills HTML
     const matchingHtml = (data.matchingSkills || []).map(skill => 
       `<span class="skill-tag skill-match">✓ ${skill}</span>`
@@ -871,6 +877,16 @@ class LinkedInJobExtractor {
       </div>
 
       <div id="ai-analysis-content">
+        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 20px; padding: 16px; background: rgba(255,255,255,0.05); border-radius: 12px; border: 1px solid rgba(255,255,255,0.1);">
+          <div style="display: flex; align-items: center; gap: 10px; flex: 1;">
+            <div style="font-size: 28px; font-weight: 700; color: ${scoreColor};">${score}%</div>
+            <div>
+              <div style="font-size: 14px; font-weight: 600; color: white;">Match Score</div>
+              <div style="font-size: 11px; color: #94a3b8;">${data.headline || 'Overall compatibility'}</div>
+            </div>
+          </div>
+        </div>
+
         ${data.minimumRequirements && data.minimumRequirements.length > 0 ? `
           <div style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.2); border-radius: 12px; padding: 20px; margin-bottom: 20px;">
             <div class="section-title" style="color: #fca5a5;">⚡ Minimum Requirements</div>
