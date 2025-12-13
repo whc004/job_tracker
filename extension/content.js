@@ -4,6 +4,99 @@ const debugError = (...args) => { if (DEBUG_LOGGING) console.error('[CONTENT]', 
 const debugWarn = (...args) => { if (DEBUG_LOGGING) console.warn('[CONTENT]', ...args); };
 
 
+const modalStyles = `
+  #ai-analysis-modal {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 90%;
+    max-width: 800px;
+    max-height: 90vh;
+    background: #1a1b26;
+    color: #e0e0e0;
+    z-index: 10001;
+    border-radius: 16px;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    font-family: 'Inter', -apple-system, sans-serif;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border: 1px solid #2f334d;
+    animation: fadeIn 0.3s ease-out;
+  }
+  #ai-analysis-header {
+    background: linear-gradient(135deg, #4f46e5, #7c3aed);
+    padding: 20px 30px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+  }
+  #ai-analysis-content {
+    padding: 30px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: #4f46e5 #1a1b26;
+  }
+  .analysis-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-bottom: 25px;
+  }
+  .score-card {
+    background: rgba(255,255,255,0.05);
+    border-radius: 12px;
+    padding: 20px;
+    text-align: center;
+    border: 1px solid rgba(255,255,255,0.1);
+  }
+  .score-circle {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    border: 4px solid;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    font-weight: bold;
+    margin: 0 auto 10px;
+  }
+  .skills-card {
+    background: rgba(255,255,255,0.05);
+    border-radius: 12px;
+    padding: 20px;
+    border: 1px solid rgba(255,255,255,0.1);
+  }
+  .skill-tag {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+    margin: 2px;
+    font-weight: 500;
+  }
+  .skill-match { background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); }
+  .skill-missing { background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); }
+  .section-title {
+    font-size: 14px; text-transform: uppercase; letter-spacing: 1px; color: #94a3b8; margin-bottom: 12px; font-weight: 600;
+  }
+  .analysis-text { line-height: 1.6; color: #cbd5e1; font-size: 15px; }
+  .close-btn {
+    background: rgba(255,255,255,0.2); border: none; color: white; width: 30px; height: 30px; border-radius: 50%;
+    cursor: pointer; font-size: 18px; display: flex; align-items: center; justify-content: center; transition: background 0.2s;
+  }
+  .close-btn:hover { background: rgba(255,255,255,0.3); }
+  @keyframes fadeIn { from { opacity: 0; transform: translate(-50%, -48%); } to { opacity: 1; transform: translate(-50%, -50%); } }
+`;
+
+const styleSheet = document.createElement("style");
+styleSheet.textContent = modalStyles;
+document.head.appendChild(styleSheet);
+
+
 // LinkedIn Job Extractor - Complete Fixed Version
 debugLog('Job Tracker content script loading...');
 
@@ -697,7 +790,7 @@ class LinkedInJobExtractor {
     }
 
     try {
-      // Extract job description
+      // Extract job description (Keep your existing robust extraction logic)
       const descriptionElement = document.querySelector('.jobs-description-content__text') ||
                                  document.querySelector('.jobs-box__html-content') ||
                                  document.querySelector('.jobs-description__content') ||
@@ -709,7 +802,7 @@ class LinkedInJobExtractor {
       }
 
       const jobDescription = descriptionElement.innerText || descriptionElement.textContent;
-      debugLog('📄 Job description extracted, length:', jobDescription);
+      debugLog('📄 Job description extracted, length:', jobDescription.length);
 
       // Call AI analysis API
       const API_URL = 'https://jobtracker-production-2ed3.up.railway.app/api';
@@ -733,10 +826,8 @@ class LinkedInJobExtractor {
       const analysis = result.data;
       debugLog('✅ AI Analysis complete:', analysis);
 
-      // Show success notification with match score
-      const matchScore = analysis.matchScore || 0;
-      const scoreColor = matchScore >= 80 ? '🟢' : matchScore >= 60 ? '🟡' : '🔴';
-      this.showNotification(`${scoreColor} Match: ${matchScore}% - Open popup to see details!`);
+      // ➤ CHANGE HERE: Call the new Modal instead of Notification
+      this.showAnalysisModal(analysis);
 
     } catch (error) {
       debugError('❌ Error in AI comparison:', error);
@@ -751,6 +842,117 @@ class LinkedInJobExtractor {
         button.disabled = false;
       }
     }
+  }
+
+  showAnalysisModal(data) {
+    // Remove existing modal if it's already open
+    const existing = document.getElementById('ai-analysis-modal');
+    if (existing) existing.remove();
+
+    // Determine colors based on score
+    const score = data.matchScore || 0;
+    let scoreColor = '#ef4444'; // Red
+    if (score >= 60) scoreColor = '#f59e0b'; // Orange
+    if (score >= 80) scoreColor = '#10b981'; // Green
+
+    // Generate Skills HTML
+    const matchingHtml = (data.matchingSkills || []).map(skill => 
+      `<span class="skill-tag skill-match">✓ ${skill}</span>`
+    ).join('');
+    
+    const missingHtml = (data.missingSkills || []).map(skill => 
+      `<span class="skill-tag skill-missing">✗ ${skill}</span>`
+    ).join('');
+
+    // Build the Modal HTML
+    const modal = document.createElement('div');
+    modal.id = 'ai-analysis-modal';
+    modal.innerHTML = `
+      <div id="ai-analysis-header">
+        <div>
+          <h2 style="margin:0; font-size: 20px; color: white;">AI Resume Analysis</h2>
+          <div style="font-size: 13px; opacity: 0.8; margin-top: 4px;">Based on your active resume</div>
+        </div>
+        <button class="close-btn" id="close-ai-modal">×</button>
+      </div>
+
+      <div id="ai-analysis-content">
+        <div class="analysis-grid">
+          <div class="score-card">
+            <div class="score-circle" style="border-color: ${scoreColor}; color: ${scoreColor}; font-size: 24px;">
+              ${score}%
+            </div>
+            <h3 style="margin: 0 0 5px 0; color: white; font-size: 16px;">${data.headline || 'Analysis Complete'}</h3>
+            <p style="margin: 0; font-size: 11px; color: #94a3b8;">Match Score</p>
+          </div>
+
+          <div class="skills-card">
+            <div class="section-title">Skills Breakdown</div>
+            <div style="margin-bottom: 10px;">
+              ${matchingHtml || '<span style="color:#666; font-size:12px">No direct matches found</span>'}
+            </div>
+            <div>
+              ${missingHtml}
+            </div>
+          </div>
+        </div>
+
+        ${data.minimumRequirements && data.minimumRequirements.length > 0 ? `
+          <div style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.2); border-radius: 12px; padding: 20px; margin-bottom: 20px;">
+            <div class="section-title" style="color: #fca5a5;">⚡ Minimum Requirements</div>
+            <ul style="margin: 0; padding-left: 20px; color: #fecaca; font-size: 14px;">
+              ${data.minimumRequirements.map(req => `
+                <li style="margin-bottom: 8px;">
+                  <span style="color: ${req.met ? '#86efac' : '#fca5a5'}">${req.met ? '✓' : '✗'}</span>
+                  <span style="color: #e0e7ff">${req.requirement}</span>
+                  ${req.details ? `<div style="font-size: 12px; color: #94a3b8; margin-top: 4px;">${req.details}</div>` : ''}
+                </li>
+              `).join('')}
+            </ul>
+          </div>
+        ` : ''}
+
+        ${data.recommendedRequirements && data.recommendedRequirements.length > 0 ? `
+          <div style="background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.2); border-radius: 12px; padding: 20px; margin-bottom: 20px;">
+            <div class="section-title" style="color: #93c5fd;">💎 Recommended Requirements</div>
+            <ul style="margin: 0; padding-left: 20px; color: #bfdbfe; font-size: 14px;">
+              ${data.recommendedRequirements.map(req => `
+                <li style="margin-bottom: 8px;">
+                  <span style="color: ${req.met ? '#86efac' : '#93c5fd'}">${req.met ? '✓' : '○'}</span>
+                  <span style="color: #e0e7ff">${req.requirement}</span>
+                  ${req.details ? `<div style="font-size: 12px; color: #94a3b8; margin-top: 4px;">${req.details}</div>` : ''}
+                </li>
+              `).join('')}
+            </ul>
+          </div>
+        ` : ''}
+
+        ${data.quickFixes && data.quickFixes.length > 0 ? `
+          <div style="background: rgba(79, 70, 229, 0.1); border: 1px solid rgba(79, 70, 229, 0.2); border-radius: 12px; padding: 20px; margin-bottom: 20px;">
+            <div class="section-title" style="color: #818cf8;">🚀 Quick Wins</div>
+            <ul style="margin: 0; padding-left: 20px; color: #e0e7ff; font-size: 14px;">
+              ${data.quickFixes.map(fix => `<li style="margin-bottom:5px;">${fix}</li>`).join('')}
+            </ul>
+          </div>
+        ` : ''}
+
+        <div style="background: rgba(255,255,255,0.03); border-radius: 12px; padding: 20px;">
+          <div class="section-title">💡 Detailed Feedback</div>
+          <div class="analysis-text">
+            ${data.detailedAnalysis || data.recommendation || 'No detailed analysis provided.'}
+          </div>
+        </div>
+      </div>
+    `;
+
+    // Add to page
+    document.body.appendChild(modal);
+
+    // Event Listeners for closing
+    document.getElementById('close-ai-modal').addEventListener('click', () => modal.remove());
+    document.addEventListener('click', (e) => {
+      if (e.target === modal) modal.remove();
+    }, { once: true });
   }
 
   // Handle duplicate detection responses from server
