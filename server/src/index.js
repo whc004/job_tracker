@@ -287,7 +287,8 @@ async function analyzeJobWithAI(jobDescription, resumeText) {
     // Try v1 API (NOT v1beta) with gemini-pro model
     const API_URL = `https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key=${API_KEY}`;
 
-    debugLog('🤖 Calling Gemini API with v1 endpoint...');
+    debugLog('🤖 Calling Gemini API...');
+    debugLog('📡 API Endpoint:', API_URL.replace(API_KEY, '[API_KEY]'));
 
     const prompt = `You are an expert technical recruiter. Analyze this resume against the job description and respond with ONLY valid JSON (no markdown).
 
@@ -312,6 +313,9 @@ Return JSON with this structure:
 }
 
 Output ONLY the JSON:`;
+
+    debugLog('📝 Prompt length:', prompt.length, 'characters');
+    debugLog('📤 Sending request to Gemini...');
 
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 60000); // 60 second timeout
@@ -746,8 +750,16 @@ app.post('/api/ai/analyze', validateUserId, async (req, res) => {
     }
 
     // Call Gemini AI for analysis
-    debugLog('🤖 Analyzing job with AI...');
+    debugLog('='.repeat(80));
+    debugLog('🤖 Starting AI Analysis');
+    debugLog('📄 Job Description (first 500 chars):', jobDescription.substring(0, 500));
+    debugLog('📝 Resume Text (first 500 chars):', activeResume.text.substring(0, 500));
+    debugLog('='.repeat(80));
+
     const analysis = await analyzeJobWithAI(jobDescription, activeResume.text);
+
+    debugLog('✅ Analysis complete');
+    debugLog('='.repeat(80));
 
     // If jobId provided, save analysis to job record
     if (jobId) {
