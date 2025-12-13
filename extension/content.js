@@ -709,7 +709,7 @@ class LinkedInJobExtractor {
       }
 
       const jobDescription = descriptionElement.innerText || descriptionElement.textContent;
-      debugLog('📄 Job description extracted, length:', jobDescription.length);
+      debugLog('📄 Job description extracted, length:', jobDescription);
 
       // Call AI analysis API
       const API_URL = 'https://jobtracker-production-2ed3.up.railway.app/api';
