@@ -318,24 +318,36 @@ async function fetchAndDisplayResumes(userId) {
 }
 
 function displayCurrentResume(activeResume, allResumes, userId) {
-    const resumeNameEl = document.getElementById('currentResumeName');
-    const uploadedAtEl = document.getElementById('resumeUploadedAt');
-    const changeBtn = document.getElementById('changeResumeBtn');
+    const resumeSelector = document.getElementById('resumeSelector');
 
     if (!activeResume || allResumes.length === 0) {
         displayNoResume(userId);
         return;
     }
 
-    // Display active resume name
+    // Restore the original HTML structure first (in case it was replaced)
+    resumeSelector.innerHTML = `
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <div style="font-size: 12px; font-weight: 600; color: #666;">📄 Current Resume</div>
+            <button id="changeResumeBtn" style="background: none; border: none; color: #667eea; cursor: pointer; font-size: 11px; text-decoration: underline; padding: 0;">
+                Change
+            </button>
+        </div>
+        <div id="currentResumeName" style="font-size: 14px; font-weight: 500; color: #0073b1;"></div>
+        <div id="resumeUploadedAt" style="font-size: 11px; color: #999; margin-top: 4px;"></div>
+    `;
+
+    // Now update the content
+    const resumeNameEl = document.getElementById('currentResumeName');
+    const uploadedAtEl = document.getElementById('resumeUploadedAt');
+    const changeBtn = document.getElementById('changeResumeBtn');
+
     resumeNameEl.textContent = activeResume.name;
 
-    // Display upload date
     const uploadDate = new Date(activeResume.uploadedAt);
     const timeAgo = getTimeAgo(uploadDate);
     uploadedAtEl.textContent = `Uploaded ${timeAgo}`;
 
-    // Handle "Change" button click
     if (changeBtn) {
         changeBtn.onclick = () => showResumeSelector(allResumes, userId);
     }
