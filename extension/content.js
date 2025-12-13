@@ -5,438 +5,105 @@ const debugWarn = (...args) => { if (DEBUG_LOGGING) console.warn('[CONTENT]', ..
 
 
 const modalStyles = `
+  :root {
+    --jt-bg: #0f172a; --jt-card: #1e293b; --jt-border: #334155; --jt-text: #f1f5f9; --jt-muted: #94a3b8;
+    --jt-primary: #3b82f6; --jt-success: #10b981; --jt-error: #ef4444; --jt-warn: #f59e0b; --jt-purple: #8b5cf6;
+  }
+
   #ai-analysis-modal {
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    width: 92%;
-    max-width: 850px;
-    max-height: 92vh;
-    background: linear-gradient(145deg, #0f1219 0%, #1a1d2e 100%);
-    color: #e2e8f0;
-    z-index: 10001;
-    border-radius: 20px;
-    box-shadow: 0 32px 64px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(139, 92, 246, 0.1);
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-    animation: modalSlideIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    width: 92%; max-width: 800px; max-height: 92vh; z-index: 10001;
+    background: var(--jt-bg); color: var(--jt-text); border-radius: 16px;
+    box-shadow: 0 32px 64px rgba(0,0,0,0.7), 0 0 0 1px var(--jt-border);
+    display: flex; flex-direction: column; overflow: hidden;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    animation: modalFadeUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   }
 
+  /* --- HEADER --- */
   #ai-analysis-header {
-    background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #a855f7 100%);
-    padding: 24px 32px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    border-bottom: 1px solid rgba(139, 92, 246, 0.2);
-    position: relative;
-    overflow: hidden;
+    background: var(--jt-bg); padding: 20px 28px; border-bottom: 1px solid var(--jt-border);
+    display: flex; justify-content: space-between; align-items: flex-start;
   }
+  #ai-analysis-header h2 { margin: 0; font-size: 20px; font-weight: 700; color: var(--jt-text); display: flex; align-items: center; gap: 8px; }
+  #ai-analysis-header .subtitle { font-size: 13px; color: var(--jt-muted); margin-top: 4px; }
 
-  #ai-analysis-header::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: radial-gradient(circle at top right, rgba(255,255,255,0.15) 0%, transparent 60%);
-    pointer-events: none;
+  /* --- CONTENT --- */
+  #ai-analysis-content { padding: 28px; overflow-y: auto; background: var(--jt-bg); }
+  #ai-analysis-content::-webkit-scrollbar { width: 6px; }
+  #ai-analysis-content::-webkit-scrollbar-track { background: transparent; }
+  #ai-analysis-content::-webkit-scrollbar-thumb { background: var(--jt-border); border-radius: 4px; }
+
+  /* --- LOADING STATE --- */
+  .loading-container { text-align: center; padding: 40px 20px; }
+  .loading-spinner { width: 80px; height: 80px; margin: 0 auto 30px; position: relative; }
+  .loading-spinner-ring {
+    width: 100%; height: 100%; border: 4px solid rgba(59, 130, 246, 0.1); border-top-color: var(--jt-primary);
+    border-radius: 50%; animation: spin 1s linear infinite;
   }
-
-  #ai-analysis-header h2 {
-    position: relative;
-    z-index: 1;
-    margin: 0;
-    font-size: 22px;
-    font-weight: 700;
-    color: white;
-    text-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  .loading-title { font-size: 22px; font-weight: 700; color: var(--jt-text); margin-bottom: 12px; }
+  .loading-subtitle { font-size: 14px; color: var(--jt-muted); margin-bottom: 8px; }
+  
+  .loading-progress-bar {
+    width: 100%; height: 6px; background: rgba(59, 130, 246, 0.1); border-radius: 10px; overflow: hidden; margin: 30px 0 20px;
   }
-
-  #ai-analysis-header .subtitle {
-    position: relative;
-    z-index: 1;
-    font-size: 13px;
-    opacity: 0.95;
-    margin-top: 4px;
-    color: rgba(255,255,255,0.9);
-    font-weight: 500;
+  .loading-progress-fill {
+    height: 100%; background: linear-gradient(90deg, var(--jt-primary), var(--jt-purple));
+    border-radius: 10px; animation: progressGrow 30s cubic-bezier(0.4, 0, 0.2, 1) forwards;
   }
-
-  #ai-analysis-content {
-    padding: 28px 32px 32px;
-    overflow-y: auto;
-    background: #0f1219;
+  
+  .loading-tip {
+    font-size: 13px; color: var(--jt-text); margin-top: 20px; padding: 16px 20px;
+    background: rgba(59, 130, 246, 0.08); border: 1px solid rgba(59, 130, 246, 0.2);
+    border-radius: 12px; min-height: 50px; display: flex; align-items: center; justify-content: center;
   }
+  .loading-tip::before { content: '💡 '; margin-right: 8px; }
 
-  #ai-analysis-content::-webkit-scrollbar {
-    width: 8px;
-  }
+  /* --- RESULTS UI --- */
+  .score-badge-container { display: flex; flex-direction: column; align-items: flex-end; }
+  .score-badge { display: inline-flex; align-items: center; justify-content: center; padding: 4px 12px; border-radius: 99px; font-weight: 700; font-size: 14px; border: 1px solid transparent; }
+  .score-high { background: rgba(16, 185, 129, 0.1); color: var(--jt-success); border-color: rgba(16, 185, 129, 0.2); }
+  .score-mid { background: rgba(245, 158, 11, 0.1); color: var(--jt-warn); border-color: rgba(245, 158, 11, 0.2); }
+  .score-low { background: rgba(239, 68, 68, 0.1); color: var(--jt-error); border-color: rgba(239, 68, 68, 0.2); }
 
-  #ai-analysis-content::-webkit-scrollbar-track {
-    background: rgba(0,0,0,0.2);
-    border-radius: 10px;
-  }
+  .analysis-section { background: var(--jt-card); border: 1px solid var(--jt-border); border-radius: 12px; padding: 20px; margin-bottom: 16px; }
+  .section-title { font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--jt-muted); font-weight: 700; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
 
-  #ai-analysis-content::-webkit-scrollbar-thumb {
-    background: linear-gradient(180deg, #6366f1, #8b5cf6);
-    border-radius: 10px;
-    border: 2px solid #0f1219;
-  }
+  .requirements-list { margin: 0; padding: 0; list-style: none; }
+  .requirements-list li { margin-bottom: 12px; display: flex; gap: 12px; align-items: flex-start; font-size: 14px; line-height: 1.5; color: var(--jt-text); }
+  .req-icon { flex-shrink: 0; margin-top: 2px; width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+  .req-met .req-icon { color: var(--jt-success); background: rgba(16, 185, 129, 0.1); }
+  .req-missing .req-icon { color: var(--jt-error); background: rgba(239, 68, 68, 0.1); }
+  .req-idea .req-icon { color: var(--jt-purple); background: rgba(139, 92, 246, 0.1); }
+  .requirement-details { font-size: 13px; color: var(--jt-muted); margin-top: 4px; display: block; }
 
-  #ai-analysis-content::-webkit-scrollbar-thumb:hover {
-    background: linear-gradient(180deg, #7c3aed, #a855f7);
-  }
+  .skill-group { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+  .skill-tag { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 500; border: 1px solid; }
+  .skill-match { background: rgba(16, 185, 129, 0.1); border-color: rgba(16, 185, 129, 0.2); color: #34d399; }
+  .skill-missing { background: rgba(239, 68, 68, 0.1); border-color: rgba(239, 68, 68, 0.2); color: #fca5a5; }
 
-  .match-score-banner {
-    background: linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(139, 92, 246, 0.15) 100%);
-    border: 1px solid rgba(139, 92, 246, 0.3);
-    border-radius: 16px;
-    padding: 20px 24px;
-    margin-bottom: 24px;
-    display: flex;
-    align-items: center;
-    gap: 20px;
-    backdrop-filter: blur(10px);
-    position: relative;
-    overflow: hidden;
-  }
-
-  .match-score-banner::before {
-    content: '';
-    position: absolute;
-    top: -50%;
-    right: -50%;
-    width: 200%;
-    height: 200%;
-    background: radial-gradient(circle, rgba(139, 92, 246, 0.1) 0%, transparent 70%);
-    pointer-events: none;
-  }
-
-  .match-score-value {
-    position: relative;
-    font-size: 48px;
-    font-weight: 800;
-    line-height: 1;
-    letter-spacing: -1px;
-    background: linear-gradient(135deg, currentColor 0%, currentColor 100%);
-    -webkit-background-clip: text;
-    background-clip: text;
-    text-shadow: 0 2px 12px currentColor;
-  }
-
-  .match-score-info {
-    position: relative;
-    flex: 1;
-  }
-
-  .match-score-label {
-    font-size: 15px;
-    font-weight: 700;
-    color: #f1f5f9;
-    margin-bottom: 4px;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-  }
-
-  .match-score-headline {
-    font-size: 13px;
-    color: #94a3b8;
-    font-weight: 500;
-  }
-
-  .analysis-section {
-    background: linear-gradient(145deg, rgba(30, 41, 59, 0.5) 0%, rgba(15, 23, 42, 0.5) 100%);
-    border-radius: 16px;
-    padding: 24px;
-    margin-bottom: 20px;
-    border: 1px solid rgba(148, 163, 184, 0.1);
-    backdrop-filter: blur(10px);
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
-  }
-
-  .analysis-section:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
-  }
-
-  .section-title {
-    font-size: 13px;
-    text-transform: uppercase;
-    letter-spacing: 1.2px;
-    color: #cbd5e1;
-    margin-bottom: 16px;
-    font-weight: 700;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  .section-title::before {
-    content: '';
-    width: 4px;
-    height: 16px;
-    background: linear-gradient(180deg, #6366f1, #8b5cf6);
-    border-radius: 2px;
-  }
-
-  .section-minimum {
-    background: linear-gradient(145deg, rgba(239, 68, 68, 0.12) 0%, rgba(185, 28, 28, 0.08) 100%);
-    border-color: rgba(239, 68, 68, 0.25);
-  }
-
-  .section-minimum .section-title {
-    color: #fca5a5;
-  }
-
-  .section-minimum .section-title::before {
-    background: linear-gradient(180deg, #ef4444, #dc2626);
-  }
-
-  .section-recommended {
-    background: linear-gradient(145deg, rgba(59, 130, 246, 0.12) 0%, rgba(37, 99, 235, 0.08) 100%);
-    border-color: rgba(59, 130, 246, 0.25);
-  }
-
-  .section-recommended .section-title {
-    color: #93c5fd;
-  }
-
-  .section-recommended .section-title::before {
-    background: linear-gradient(180deg, #3b82f6, #2563eb);
-  }
-
-  .section-quickwins {
-    background: linear-gradient(145deg, rgba(168, 85, 247, 0.12) 0%, rgba(126, 58, 237, 0.08) 100%);
-    border-color: rgba(168, 85, 247, 0.25);
-  }
-
-  .section-quickwins .section-title {
-    color: #c4b5fd;
-  }
-
-  .section-quickwins .section-title::before {
-    background: linear-gradient(180deg, #a855f7, #7e3af2);
-  }
-
-  .skill-tag {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 8px 14px;
-    border-radius: 10px;
-    font-size: 13px;
-    margin: 4px;
-    font-weight: 600;
-    transition: all 0.2s ease;
-    backdrop-filter: blur(10px);
-  }
-
-  .skill-tag:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-  }
-
-  .skill-match {
-    background: linear-gradient(135deg, rgba(16, 185, 129, 0.25) 0%, rgba(5, 150, 105, 0.15) 100%);
-    color: #6ee7b7;
-    border: 1px solid rgba(16, 185, 129, 0.4);
-  }
-
-  .skill-missing {
-    background: linear-gradient(135deg, rgba(239, 68, 68, 0.25) 0%, rgba(220, 38, 38, 0.15) 100%);
-    color: #fca5a5;
-    border: 1px solid rgba(239, 68, 68, 0.4);
-  }
-
-  .analysis-text {
-    line-height: 1.7;
-    color: #cbd5e1;
-    font-size: 14px;
-    font-weight: 400;
-  }
-
-  .requirements-list {
-    margin: 0;
-    padding-left: 0;
-    list-style: none;
-  }
-
-  .requirements-list li {
-    margin-bottom: 14px;
-    padding-left: 28px;
-    position: relative;
-    color: #e2e8f0;
-    font-size: 14px;
-    line-height: 1.6;
-  }
-
-  .requirements-list li::before {
-    content: attr(data-icon);
-    position: absolute;
-    left: 0;
-    top: 0;
-    font-size: 16px;
-    font-weight: bold;
-  }
-
-  .requirement-details {
-    font-size: 13px;
-    color: #94a3b8;
-    margin-top: 6px;
-    padding-left: 0;
-    line-height: 1.5;
-    font-style: italic;
-  }
-
+  /* --- IMPROVED CLOSE BUTTON --- */
   .close-btn {
-    position: relative;
-    z-index: 2;
-    background: rgba(255,255,255,0.15);
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(255,255,255,0.2);
-    color: white;
-    width: 36px;
-    height: 36px;
-    border-radius: 12px;
-    cursor: pointer;
-    font-size: 20px;
-    font-weight: 600;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.2s ease;
+    background: rgba(255, 255, 255, 0.05); /* Visible background */
+    border: 1px solid var(--jt-border);     /* Distinct border */
+    color: var(--jt-text);                  /* Brighter icon color */
+    width: 36px; height: 36px;              /* Slightly larger */
+    border-radius: 8px; 
+    cursor: pointer; 
+    display: flex; align-items: center; justify-content: center; 
+    transition: all 0.2s;
   }
-
+  
   .close-btn:hover {
-    background: rgba(255,255,255,0.25);
+    background: rgba(239, 68, 68, 0.15);    /* Red background on hover */
+    border-color: rgba(239, 68, 68, 0.3);   /* Red border on hover */
+    color: #fca5a5;                         /* Light red icon */
     transform: scale(1.05);
   }
 
-  .close-btn:active {
-    transform: scale(0.95);
-  }
-
-  @keyframes modalSlideIn {
-    from {
-      opacity: 0;
-      transform: translate(-50%, -45%) scale(0.95);
-    }
-    to {
-      opacity: 1;
-      transform: translate(-50%, -50%) scale(1);
-    }
-  }
-
-  @keyframes progressGrow {
-    from { width: 0%; }
-    to { width: 100%; }
-  }
-
-  @keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.5; }
-  }
-
-  @keyframes spin {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
-  }
-
-  .loading-container {
-    text-align: center;
-    padding: 60px 40px;
-  }
-
-  .loading-spinner {
-    width: 80px;
-    height: 80px;
-    margin: 0 auto 30px;
-    position: relative;
-  }
-
-  .loading-spinner-ring {
-    width: 100%;
-    height: 100%;
-    border: 4px solid rgba(139, 92, 246, 0.1);
-    border-top-color: #8b5cf6;
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-  }
-
-  .loading-progress-bar {
-    width: 100%;
-    height: 6px;
-    background: rgba(139, 92, 246, 0.1);
-    border-radius: 10px;
-    overflow: hidden;
-    margin: 30px 0 20px;
-  }
-
-  .loading-progress-fill {
-    height: 100%;
-    background: linear-gradient(90deg, #6366f1, #8b5cf6, #a855f7);
-    border-radius: 10px;
-    animation: progressGrow 30s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-  }
-
-  .loading-title {
-    font-size: 22px;
-    font-weight: 700;
-    color: #e2e8f0;
-    margin-bottom: 12px;
-  }
-
-  .loading-subtitle {
-    font-size: 14px;
-    color: #94a3b8;
-    margin-bottom: 8px;
-  }
-
-  .loading-tip {
-    font-size: 13px;
-    color: #cbd5e1;
-    margin-top: 20px;
-    padding: 16px 20px;
-    background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
-    border-radius: 12px;
-    border: 1px solid rgba(139, 92, 246, 0.2);
-    min-height: 50px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-    line-height: 1.5;
-    transition: opacity 0.3s ease-in-out;
-  }
-
-  .loading-tip::before {
-    content: '💡 ';
-    margin-right: 8px;
-  }
-
-  @media (max-width: 768px) {
-    #ai-analysis-modal {
-      width: 95%;
-      max-height: 95vh;
-    }
-
-    #ai-analysis-content {
-      padding: 20px;
-    }
-
-    .match-score-value {
-      font-size: 36px;
-    }
-
-    .loading-container {
-      padding: 40px 20px;
-    }
-  }
+  @keyframes modalFadeUp { from { opacity: 0; transform: translate(-50%, -48%) scale(0.96); } to { opacity: 1; transform: translate(-50%, -50%) scale(1); } }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes progressGrow { from { width: 0%; } to { width: 100%; } }
 `;
 
 const styleSheet = document.createElement("style");
@@ -598,7 +265,7 @@ class LinkedInJobExtractor {
     
     const button = document.createElement('button');
     button.id = 'job-tracker-extract-btn';
-    button.innerHTML = '✅ Mark as Applied';
+    button.innerHTML = `<span>✅ Mark as Applied</span>`;
     button.className = 'artdeco-button artdeco-button--secondary artdeco-button--3';
     button.type = 'button';
     
@@ -667,7 +334,7 @@ class LinkedInJobExtractor {
 
     const button = document.createElement('button');
     button.id = 'job-tracker-compare-btn';
-    button.innerHTML = '🤖 Match';
+    button.innerHTML = `<span>✦ Analyze</span>`;
     button.className = 'artdeco-button artdeco-button--secondary artdeco-button--3';
     button.type = 'button';
 
@@ -1123,44 +790,42 @@ class LinkedInJobExtractor {
   }
 
   showLoadingModal() {
-    // Remove existing modal if present
     const existing = document.getElementById('ai-analysis-modal');
     if (existing) existing.remove();
 
     const tips = [
-      "Analyzing your resume against job requirements...",
-      "Comparing your skills with the job description...",
-      "Identifying matching and missing skills...",
-      "Evaluating minimum and recommended requirements...",
-      "Generating personalized recommendations...",
-      "Calculating compatibility score...",
-      "Preparing actionable quick wins...",
-      "AI is processing thousands of data points...",
-      "This usually takes 20-30 seconds for best results..."
+      "Analyzing requirements...",
+      "Matching skills...",
+      "Evaluating compatibility...",
+      "Generating insights...",
+      "Checking keywords..."
     ];
-
-    let currentTipIndex = 0;
 
     const modal = document.createElement('div');
     modal.id = 'ai-analysis-modal';
+    
+    // Using the ICONS.sparkle and ICONS.x we defined earlier
     modal.innerHTML = `
       <div id="ai-analysis-header">
         <div>
-          <h2>🤖 AI Analysis in Progress</h2>
+          <h2>✦ AI Analysis in Progress</h2>
           <div class="subtitle">Please wait while we analyze your match...</div>
         </div>
-        <button class="close-btn" id="close-ai-modal">×</button>
+        <button class="close-btn" id="close-ai-modal">❌</button>
       </div>
       <div id="ai-analysis-content">
         <div class="loading-container">
           <div class="loading-spinner">
             <div class="loading-spinner-ring"></div>
           </div>
+          
           <div class="loading-title">Analyzing with AI</div>
           <div class="loading-subtitle">Powered by Google Gemini</div>
+          
           <div class="loading-progress-bar">
             <div class="loading-progress-fill"></div>
           </div>
+          
           <div class="loading-tip" id="loading-tip">${tips[0]}</div>
         </div>
       </div>
@@ -1168,10 +833,8 @@ class LinkedInJobExtractor {
 
     document.body.appendChild(modal);
 
-    // Close button handler
-    document.getElementById('close-ai-modal').addEventListener('click', () => modal.remove());
-
-    // Rotate tips every 3 seconds
+    // Tip rotation logic (same as before)
+    let currentTipIndex = 0;
     const tipInterval = setInterval(() => {
       currentTipIndex = (currentTipIndex + 1) % tips.length;
       const tipElement = document.getElementById('loading-tip');
@@ -1185,10 +848,9 @@ class LinkedInJobExtractor {
         clearInterval(tipInterval);
       }
     }, 3000);
-
-    // Store interval ID so we can clear it later
     modal.dataset.tipInterval = tipInterval;
 
+    document.getElementById('close-ai-modal').addEventListener('click', () => modal.remove());
     return modal;
   }
 
@@ -1265,7 +927,7 @@ class LinkedInJobExtractor {
       }
     } finally {
       if (button) {
-        button.textContent = '🤖 Match';
+        button.innerHTML = `✦<span>Analyze</span>`;
         button.disabled = false;
       }
     }
@@ -1303,7 +965,7 @@ class LinkedInJobExtractor {
     modal.innerHTML = `
       <div id="ai-analysis-header">
         <div>
-          <h2>🎯 AI Resume Analysis</h2>
+          <h2>✦  AI Resume Analysis</h2>
           <div class="subtitle">Based on your active resume</div>
         </div>
         <div style="display: flex; align-items: center; gap: 16px;">
@@ -1322,9 +984,11 @@ class LinkedInJobExtractor {
             <div class="section-title">⚡ Minimum Requirements</div>
             <ul class="requirements-list">
               ${data.minimumRequirements.map(req => `
-                <li data-icon="${req.met ? '✅' : '❌'}">
-                  <div>${req.requirement}</div>
-                  ${req.details ? `<div class="requirement-details">${req.details}</div>` : ''}
+                <li class="${req.met ? 'req-met' : 'req-missing'}">
+                  <div class="req-icon">${req.met ? '✅' : '❌'}</div>
+                  <div>
+                    <div>${req.requirement}</div>
+                  </div>
                 </li>
               `).join('')}
             </ul>
