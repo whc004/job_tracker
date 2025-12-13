@@ -284,8 +284,8 @@ async function analyzeJobWithAI(jobDescription, resumeText) {
     }
 
     const API_KEY = process.env.GEMINI_API_KEY;
-    // Use gemini-1.5-flash (current standard model, fast and cost-effective)
-    const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`;
+    // Use gemini-2.5-flash (current standard model as of Dec 2025)
+    const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${API_KEY}`;
 
     debugLog('🤖 Calling Gemini API...');
     debugLog('📡 API Endpoint:', API_URL.replace(API_KEY, '[API_KEY]'));
